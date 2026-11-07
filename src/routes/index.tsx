@@ -117,7 +117,7 @@ function Index() {
             return (
               <Link key={p.id} to="/produto/$slug" params={{ slug: p.slug }} className="group">
                 <div className="relative aspect-[3/4] overflow-hidden bg-blush">
-                  <img src={p.image} alt={p.name} className="h-full w-full object-cover object-top transition group-hover:scale-105" />
+                  <img src={p.image} alt={p.name} className="h-full w-full object-cover object-[78%_0%] transition group-hover:scale-105" />
                   <div className="absolute left-2 top-2 flex flex-col gap-1">
                     {p.isNew && <span className="bg-wine px-2 py-0.5 text-[10px] text-ivory">NOVO</span>}
                     {p.best && <span className="bg-champagne px-2 py-0.5 text-[10px] text-wine-deep">MAIS VENDIDO</span>}

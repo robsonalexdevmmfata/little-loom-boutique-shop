@@ -53,7 +53,7 @@ function Cart() {
             <div className="space-y-4">
               {lines.map((l, idx) => (
                 <div key={idx} className="flex gap-4 border-b border-border pb-4">
-                  <img src={l.p.image} alt="" className="h-28 w-20 object-cover" />
+                  <img src={l.p.image} alt="" className="h-28 w-20 object-cover object-[78%_0%]" />
                   <div className="flex-1">
                     <p>{l.p.name}</p>
                     <p className="text-xs text-muted-foreground">Tamanho {l.size}</p>
