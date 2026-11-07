@@ -25,13 +25,13 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
         </div>
       )}
       <header className={`${overlay ? "absolute left-0 right-0 z-20 bg-wine-deep/60" : "bg-wine-deep"} grid grid-cols-[1fr_auto_1fr] items-center px-4 py-4 sm:px-6 text-ivory md:px-16`}>
-        <nav className="hidden gap-10 text-sm md:flex">
+        <nav className="hidden gap-8 whitespace-nowrap text-sm lg:flex">
           <Link to="/">Início</Link>
           <a href="/#colecoes">Coleções</a>
           <a href="/#novidades">Novidades</a>
           <a href="/#sobre">Sobre nós</a>
         </nav>
-        <button aria-label="Menu" onClick={() => setOpen(!open)} className="md:hidden">{open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
+        <button aria-label="Menu" onClick={() => setOpen(!open)} className="lg:hidden">{open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
         <Logo />
         <div className="flex justify-end gap-3 sm:gap-6">
           <Search className="h-5 w-5" strokeWidth={1.4} />
@@ -42,7 +42,7 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
           </Link>
         </div>
         {open && (
-          <nav className="col-span-3 mt-4 flex flex-col gap-4 border-t border-ivory/10 pt-4 text-sm md:hidden" onClick={() => setOpen(false)}>
+          <nav className="col-span-3 mt-4 flex flex-col gap-4 border-t border-ivory/10 pt-4 text-sm lg:hidden" onClick={() => setOpen(false)}>
             <Link to="/">Início</Link>
             <a href="/#colecoes">Coleções</a>
             <a href="/#novidades">Novidades</a>
