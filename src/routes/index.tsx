@@ -72,7 +72,7 @@ function Index() {
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {categories.map((c) => (
-            <a key={c.name} href="#novidades" className="group relative aspect-[286/270] overflow-hidden">
+            <a key={c.name} href="#novidades" className="group relative aspect-[286/214] overflow-hidden">
               <img src={c.image} alt={c.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-wine-deep/70 to-transparent" />
               <div className="absolute bottom-4 left-4 text-ivory">
