@@ -54,11 +54,31 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
       <footer id="sobre" className="bg-wine-deep px-6 py-14 text-ivory/80 md:px-16">
         <div className="grid gap-10 md:grid-cols-4">
           <div><Logo className="!items-start" /><p className="mt-4 text-sm">Moda feminina sofisticada, elegante e contemporânea.</p></div>
-          <div className="text-sm space-y-2"><h4 className="font-display text-lg text-champagne">Atendimento</h4><p>WhatsApp (11) 99999-0000</p><p>Instagram @reisnoir</p></div>
+          <div className="text-sm space-y-2">
+            <h4 className="font-display text-lg text-champagne">Atendimento</h4>
+            <p>
+              <a href="https://wa.me/5511995523083" target="_blank" rel="noopener noreferrer" className="transition hover:text-champagne">
+                WhatsApp (11) 99552-3083
+              </a>
+            </p>
+            <p>
+              <a href="https://instagram.com/reis_noir" target="_blank" rel="noopener noreferrer" className="transition hover:text-champagne">
+                Instagram @reis_noir
+              </a>
+            </p>
+          </div>
           <div className="text-sm space-y-2"><h4 className="font-display text-lg text-champagne">Políticas</h4><p>Privacidade</p><p>Trocas e devoluções</p><p>Entrega</p></div>
           <div className="text-sm space-y-2"><h4 className="font-display text-lg text-champagne">Pagamento</h4><p>PIX · Cartão em até 12x · Boleto</p></div>
         </div>
-        <p className="mt-10 border-t border-ivory/10 pt-6 text-center text-xs">© 2026 REIS NOIR. Todos os direitos reservados.</p>
+        <div className="mt-10 space-y-2 border-t border-ivory/10 pt-6 text-center text-xs">
+          <p>© 2026 REIS NOIR. Todos os direitos reservados.</p>
+          <p>
+            Desenvolvido por{" "}
+            <a href="https://agenciainfotech.com.br/" target="_blank" rel="noopener noreferrer" className="text-champagne transition hover:underline">
+              Agencia Info Tech Ltda
+            </a>
+          </p>
+        </div>
       </footer>
     </div>
   );
