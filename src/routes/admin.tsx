@@ -31,9 +31,11 @@ import {
   categories,
   images,
   paidRevenue,
+  useCatalog,
   useOrders,
   useProducts,
   useSettings,
+  type CatalogCategory,
   type Order,
   type Product,
   type Settings,
@@ -403,33 +405,131 @@ function StatusPill({ status }: { status: Order["status"] }) {
   return <span className={`inline-block px-2 py-0.5 text-[10px] tracking-wide ${styles[status]}`}>{status}</span>;
 }
 
+function PlacementToggle({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-3 border border-[#eee7e0] bg-[#faf7f4]/70 px-3 py-2.5">
+      <span>
+        <span className="block text-xs font-medium text-wine">{label}</span>
+        <span className="block text-[10px] text-muted-foreground">{hint}</span>
+      </span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </label>
+  );
+}
+
 function Products() {
   const [products, setProducts] = useProducts();
+  const [catalog, setCatalog] = useCatalog();
   const [q, setQ] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [newSub, setNewSub] = useState<Record<string, string>>({});
+
   const upd = (id: string, patch: Partial<Product>) => setProducts(products.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
   const add = () => {
     const id = String(Date.now());
+    const cat = catalog[0];
     setProducts([
       ...products,
       {
         id,
         slug: `novo-produto-${id}`,
         name: "Novo produto",
-        category: "Vestidos",
+        category: cat?.name ?? "Vestidos",
+        subcategory: cat?.subcategories[0] ?? "",
         price: 399.9,
         stock: 0,
-        image: images.vestidos,
+        image: cat?.image ?? images.vestidos,
         description: "",
         sizes: ["PP", "P", "M", "G"],
+        showInVitrine: true,
+        featured: false,
+        isNew: true,
+        best: false,
         status: "rascunho",
       },
     ]);
-    toast.success("Produto criado como rascunho");
+    setOpenId(id);
+    toast.success("Produto criado — defina vitrine e subcategoria");
   };
+
+  const addSubcategory = (catName: string) => {
+    const name = (newSub[catName] ?? "").trim();
+    if (!name) return;
+    setCatalog(
+      catalog.map((c) =>
+        c.name === catName && !c.subcategories.includes(name) ? { ...c, subcategories: [...c.subcategories, name] } : c,
+      ),
+    );
+    setNewSub((s) => ({ ...s, [catName]: "" }));
+    toast.success(`Subcategoria “${name}” criada`);
+  };
+
+  const removeSubcategory = (catName: string, sub: string) => {
+    setCatalog(catalog.map((c) => (c.name === catName ? { ...c, subcategories: c.subcategories.filter((x) => x !== sub) } : c)));
+    setProducts(products.map((p) => (p.category === catName && p.subcategory === sub ? { ...p, subcategory: "" } : p)));
+  };
+
   const list = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
+  const subsOf = (cat: string) => catalog.find((c) => c.name === cat)?.subcategories ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <div className="border border-[#e5ddd4] bg-white p-5">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl text-wine">Categorias & subcategorias</h2>
+            <p className="text-xs text-muted-foreground">Crie subcategorias para organizar o catálogo da loja.</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {catalog.map((c: CatalogCategory) => (
+            <div key={c.name} className="border border-[#eee7e0] p-4">
+              <div className="mb-3 flex items-center gap-3">
+                <img src={c.image} alt="" className="h-12 w-9 object-cover object-top" />
+                <div>
+                  <p className="font-medium text-wine">{c.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{c.subcategories.length} subcategorias</p>
+                </div>
+              </div>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {c.subcategories.length === 0 && <span className="text-xs text-muted-foreground">Nenhuma ainda</span>}
+                {c.subcategories.map((sub) => (
+                  <span key={sub} className="inline-flex items-center gap-1 border border-wine/15 bg-blush/50 px-2 py-1 text-[11px] text-wine">
+                    {sub}
+                    <button type="button" aria-label={`Remover ${sub}`} className="opacity-50 hover:opacity-100" onClick={() => removeSubcategory(c.name, sub)}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className={fieldClass}
+                  placeholder="Nova subcategoria…"
+                  value={newSub[c.name] ?? ""}
+                  onChange={(e) => setNewSub((s) => ({ ...s, [c.name]: e.target.value }))}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSubcategory(c.name))}
+                />
+                <button type="button" onClick={() => addSubcategory(c.name)} className="h-11 shrink-0 bg-wine px-3 text-xs tracking-wider text-ivory uppercase">
+                  Add
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3 border border-[#e5ddd4] bg-white p-4">
         <div className="relative max-w-sm flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -442,92 +542,143 @@ function Products() {
           </button>
         </div>
       </div>
-      <div className="overflow-hidden border border-[#e5ddd4] bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-[#faf7f4] text-left text-[11px] tracking-wide text-muted-foreground uppercase">
-              <tr>
-                <th className="px-4 py-3 font-medium"></th>
-                <th className="px-2 py-3 font-medium">Produto</th>
-                <th className="px-2 py-3 font-medium">Categoria</th>
-                <th className="px-2 py-3 font-medium">Preço</th>
-                <th className="px-2 py-3 font-medium">Promo</th>
-                <th className="px-2 py-3 font-medium">Estoque</th>
-                <th className="px-2 py-3 font-medium">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((p) => (
-                <tr key={p.id} className="border-t border-[#eee7e0] transition hover:bg-[#fbfaf8]">
-                  <td className="px-4 py-3">
-                    <img src={p.image} alt="" className="h-14 w-10 object-cover object-[78%_0%]" />
-                  </td>
-                  <td className="px-2 py-3">
-                    <input className={fieldClass} value={p.name} onChange={(e) => upd(p.id, { name: e.target.value })} />
-                  </td>
-                  <td className="px-2 py-3">
-                    <select
-                      className={fieldClass}
-                      value={p.category}
-                      onChange={(e) => {
-                        const c = categories.find((x) => x.name === e.target.value)!;
-                        upd(p.id, { category: c.name, image: c.image });
+
+      <div className="space-y-3">
+        {list.map((p) => {
+          const open = openId === p.id;
+          const subs = subsOf(p.category);
+          return (
+            <div key={p.id} className="border border-[#e5ddd4] bg-white">
+              <div className="flex flex-wrap items-center gap-3 p-3 md:p-4">
+                <img src={p.image} alt="" className="h-16 w-12 object-cover object-[78%_0%]" />
+                <div className="min-w-[180px] flex-1">
+                  <input className={fieldClass} value={p.name} onChange={(e) => upd(p.id, { name: e.target.value })} />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {p.category}
+                    {p.subcategory ? ` · ${p.subcategory}` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {p.showInVitrine !== false && <span className="bg-wine/10 px-2 py-0.5 text-[10px] text-wine">Vitrine</span>}
+                  {p.featured && <span className="bg-champagne/40 px-2 py-0.5 text-[10px] text-wine-deep">Destaque</span>}
+                  {p.isNew && <span className="bg-wine px-2 py-0.5 text-[10px] text-ivory">Novo</span>}
+                  {p.best && <span className="bg-blush px-2 py-0.5 text-[10px] text-wine">Mais vendido</span>}
+                </div>
+                <select className={fieldClass + " w-28"} value={p.status} onChange={(e) => upd(p.id, { status: e.target.value as Product["status"] })}>
+                  <option>publicado</option>
+                  <option>rascunho</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setOpenId(open ? null : p.id)}
+                  className="h-11 border border-wine/20 px-3 text-xs tracking-wider text-wine uppercase hover:bg-blush"
+                >
+                  {open ? "Fechar" : "Editar"}
+                </button>
+              </div>
+
+              {open && (
+                <div className="border-t border-[#eee7e0] bg-[#faf7f4]/40 p-4 md:p-5">
+                  <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+                    <div className="space-y-3">
+                      <p className="text-[11px] tracking-[0.2em] text-wine/70 uppercase">Classificação</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
+                          Categoria
+                          <select
+                            className={fieldClass + " mt-1.5"}
+                            value={p.category}
+                            onChange={(e) => {
+                              const c = catalog.find((x) => x.name === e.target.value)!;
+                              upd(p.id, { category: c.name, image: c.image, subcategory: c.subcategories[0] ?? "" });
+                            }}
+                          >
+                            {catalog.map((c) => (
+                              <option key={c.name}>{c.name}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
+                          Subcategoria
+                          <select
+                            className={fieldClass + " mt-1.5"}
+                            value={p.subcategory ?? ""}
+                            onChange={(e) => upd(p.id, { subcategory: e.target.value })}
+                          >
+                            <option value="">Sem subcategoria</option>
+                            {subs.map((sub) => (
+                              <option key={sub} value={sub}>
+                                {sub}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
+                          Preço
+                          <input type="number" className={fieldClass + " mt-1.5"} value={p.price} onChange={(e) => upd(p.id, { price: +e.target.value })} />
+                        </label>
+                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
+                          Promo
+                          <input
+                            type="number"
+                            className={fieldClass + " mt-1.5"}
+                            value={p.promo ?? ""}
+                            onChange={(e) => upd(p.id, { promo: e.target.value ? +e.target.value : undefined })}
+                          />
+                        </label>
+                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
+                          Estoque
+                          <input type="number" className={fieldClass + " mt-1.5"} value={p.stock} onChange={(e) => upd(p.id, { stock: +e.target.value })} />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-[11px] tracking-[0.2em] text-wine/70 uppercase">Onde aparece na loja</p>
+                      <PlacementToggle
+                        label="Vitrine da home"
+                        hint="Grade principal de produtos"
+                        checked={p.showInVitrine !== false}
+                        onChange={(v) => upd(p.id, { showInVitrine: v })}
+                      />
+                      <PlacementToggle label="Destaques" hint="Filtro e selo de destaque" checked={!!p.featured} onChange={(v) => upd(p.id, { featured: v })} />
+                      <PlacementToggle label="Novidades" hint="Badge NOVO + filtro" checked={!!p.isNew} onChange={(v) => upd(p.id, { isNew: v })} />
+                      <PlacementToggle label="Mais vendidos" hint="Badge + filtro" checked={!!p.best} onChange={(v) => upd(p.id, { best: v })} />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-[#eee7e0] pt-4">
+                    <button
+                      type="button"
+                      className="inline-flex h-10 items-center gap-2 border border-wine/20 px-3 text-xs text-wine"
+                      onClick={() => {
+                        setProducts([...products, { ...p, id: String(Date.now()), slug: p.slug + "-copia", name: p.name + " (cópia)", status: "rascunho" }]);
+                        toast.success("Produto duplicado");
                       }}
                     >
-                      {categories.map((c) => (
-                        <option key={c.name}>{c.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-2 py-3">
-                    <input type="number" className={fieldClass + " w-24"} value={p.price} onChange={(e) => upd(p.id, { price: +e.target.value })} />
-                  </td>
-                  <td className="px-2 py-3">
-                    <input type="number" className={fieldClass + " w-24"} value={p.promo ?? ""} onChange={(e) => upd(p.id, { promo: e.target.value ? +e.target.value : undefined })} />
-                  </td>
-                  <td className="px-2 py-3">
-                    <input type="number" className={fieldClass + " w-20"} value={p.stock} onChange={(e) => upd(p.id, { stock: +e.target.value })} />
-                  </td>
-                  <td className="px-2 py-3">
-                    <select className={fieldClass} value={p.status} onChange={(e) => upd(p.id, { status: e.target.value as Product["status"] })}>
-                      <option>publicado</option>
-                      <option>rascunho</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        aria-label="Duplicar"
-                        className="text-muted-foreground hover:text-wine"
-                        onClick={() => {
-                          setProducts([...products, { ...p, id: String(Date.now()), slug: p.slug + "-copia", name: p.name + " (cópia)", status: "rascunho" }]);
-                          toast.success("Produto duplicado");
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Excluir"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          if (confirm("Excluir produto?")) {
-                            setProducts(products.filter((x) => x.id !== p.id));
-                            toast.message("Produto removido");
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      <Copy className="h-3.5 w-3.5" /> Duplicar
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex h-10 items-center gap-2 border border-destructive/30 px-3 text-xs text-destructive"
+                      onClick={() => {
+                        if (confirm("Excluir produto?")) {
+                          setProducts(products.filter((x) => x.id !== p.id));
+                          setOpenId(null);
+                          toast.message("Produto removido");
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

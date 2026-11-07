@@ -168,8 +168,9 @@ function ProductPage() {
               }}
             />
             <div className={`pointer-events-none absolute left-3 top-3 flex flex-col gap-1 transition ${zoom.on ? "opacity-0" : "opacity-100"}`}>
+              {p.featured && <span className="bg-champagne px-2.5 py-1 text-[10px] tracking-wider text-wine-deep">DESTAQUE</span>}
               {p.isNew && <span className="bg-wine px-2.5 py-1 text-[10px] tracking-wider text-ivory">NOVO</span>}
-              {p.best && <span className="bg-champagne px-2.5 py-1 text-[10px] tracking-wider text-wine-deep">MAIS VENDIDO</span>}
+              {p.best && <span className="bg-ivory px-2.5 py-1 text-[10px] tracking-wider text-wine">MAIS VENDIDO</span>}
               {save > 0 && <span className="bg-ivory px-2.5 py-1 text-[10px] tracking-wider text-wine">-{Math.round((save / p.price) * 100)}%</span>}
             </div>
             <p className={`pointer-events-none absolute bottom-3 left-3 hidden bg-wine-deep/70 px-2.5 py-1 text-[10px] tracking-wider text-ivory uppercase transition md:block ${zoom.on ? "opacity-0" : "opacity-100"}`}>
@@ -196,17 +197,20 @@ function ProductPage() {
         </div>
 
         <div>
-          <p className="text-[11px] tracking-[0.35em] text-muted-foreground uppercase">{p.category}</p>
+          <p className="text-[11px] tracking-[0.35em] text-muted-foreground uppercase">
+            {p.category}
+            {p.subcategory ? ` · ${p.subcategory}` : ""}
+          </p>
           <h1 className="mt-2 font-display text-3xl leading-tight text-wine sm:text-4xl lg:text-5xl">{p.name}</h1>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {p.color && <span>Cor: {p.color}</span>}
             {p.sku && <span>SKU: {p.sku}</span>}
           </div>
 
-          {p.best && (
+          {(p.featured || p.best) && (
             <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-wine">
               <Sparkles className="h-3.5 w-3.5 text-champagne" />
-              Escolhida por +40 mulheres esta semana
+              {p.featured ? "Em destaque na coleção REIS NOIR" : "Escolhida por +40 mulheres esta semana"}
             </p>
           )}
 

@@ -7,7 +7,7 @@ import sConjunto from "@/assets/slide_conjunto.jpg";
 import sBlazer from "@/assets/slide_blazer.jpg";
 import sMacacao from "@/assets/slide_macacao.jpg";
 import { StoreLayout } from "@/components/StoreLayout";
-import { brl, categories, useProducts, useSettings } from "@/lib/store";
+import { brl, useCatalog, useProducts, useSettings } from "@/lib/store";
 import editorial from "@/assets/editorial.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -39,8 +39,11 @@ const benefitIcons = [Gem, Truck, CreditCard, Headphones];
 function Index() {
   const [s] = useSettings();
   const [products] = useProducts();
+  const [catalog] = useCatalog();
   const [i, setI] = useState(0);
   const [cat, setCat] = useState("Todas");
+  const [sub, setSub] = useState("Todas");
+  const [place, setPlace] = useState<"vitrine" | "destaques" | "novidades" | "mais-vendidos">("vitrine");
 
   const slides = slideMedia.map((media, k) => {
     if (k === 0) {
@@ -59,8 +62,22 @@ function Index() {
 
   const go = (d: number) => setI((p) => (p + d + slides.length) % slides.length);
   const published = products.filter((p) => p.status === "publicado");
-  const filtered = cat === "Todas" ? published : published.filter((p) => p.category === cat);
-  const filters = ["Todas", ...categories.map((c) => c.name)];
+  const byPlace = published.filter((p) => {
+    if (place === "destaques") return !!p.featured;
+    if (place === "novidades") return !!p.isNew;
+    if (place === "mais-vendidos") return !!p.best;
+    return p.showInVitrine !== false;
+  });
+  const byCat = cat === "Todas" ? byPlace : byPlace.filter((p) => p.category === cat);
+  const filtered = sub === "Todas" || cat === "Todas" ? byCat : byCat.filter((p) => p.subcategory === sub);
+  const catFilters = ["Todas", ...catalog.map((c) => c.name)];
+  const placeFilters = [
+    { id: "vitrine" as const, label: "Vitrine" },
+    { id: "destaques" as const, label: "Destaques" },
+    { id: "novidades" as const, label: "Novidades" },
+    { id: "mais-vendidos" as const, label: "Mais vendidos" },
+  ];
+  const subFilters = cat === "Todas" ? [] : ["Todas", ...(catalog.find((c) => c.name === cat)?.subcategories ?? [])];
 
   useEffect(() => {
     const t = setInterval(() => setI((p) => (p + 1) % slideMedia.length), 6000);
@@ -130,8 +147,18 @@ function Index() {
           <span className="hidden h-px flex-1 bg-wine/40 sm:block" />
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {categories.map((c) => (
-            <a key={c.name} href="#novidades" className="group relative aspect-[3/4] overflow-hidden">
+          {catalog.map((c) => (
+            <button
+              key={c.name}
+              type="button"
+              onClick={() => {
+                setCat(c.name);
+                setSub("Todas");
+                setPlace("vitrine");
+                document.getElementById("novidades")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="group relative aspect-[3/4] overflow-hidden text-left"
+            >
               <img src={c.image} alt={c.name} className="h-full w-full object-cover object-top transition duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-wine-deep/70 to-transparent" />
               <div className="absolute bottom-4 left-4 text-ivory">
@@ -140,7 +167,7 @@ function Index() {
                   Ver coleção <ArrowRight className="h-3 w-3" />
                 </p>
               </div>
-            </a>
+            </button>
           ))}
         </div>
       </section>
@@ -148,19 +175,52 @@ function Index() {
       <section id="novidades" className="bg-background px-6 py-14 md:px-16">
         <h2 className="mb-3 text-center font-display text-3xl text-wine">{s.productsTitle}</h2>
         <p className="mb-6 text-center text-sm text-muted-foreground">{filtered.length} peças disponíveis</p>
-        <div className="mb-8 flex flex-wrap justify-center gap-2">
-          {filters.map((f) => (
+
+        <div className="mb-4 flex flex-wrap justify-center gap-2">
+          {placeFilters.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setPlace(f.id)}
+              className={`px-4 py-2 text-[11px] tracking-[0.15em] uppercase transition ${place === f.id ? "bg-wine text-ivory" : "border border-border text-wine hover:border-wine"}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-4 flex flex-wrap justify-center gap-2">
+          {catFilters.map((f) => (
             <button
               key={f}
               type="button"
-              onClick={() => setCat(f)}
-              className={`px-4 py-2 text-[11px] tracking-[0.15em] uppercase transition ${cat === f ? "bg-wine text-ivory" : "border border-border text-wine hover:border-wine"}`}
+              onClick={() => {
+                setCat(f);
+                setSub("Todas");
+              }}
+              className={`px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase transition ${cat === f ? "border border-wine bg-blush text-wine" : "text-muted-foreground hover:text-wine"}`}
             >
               {f}
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4">
+
+        {subFilters.length > 1 && (
+          <div className="mb-8 flex flex-wrap justify-center gap-2">
+            {subFilters.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setSub(f)}
+                className={`px-3 py-1 text-[10px] tracking-wide uppercase transition ${sub === f ? "bg-champagne text-wine-deep" : "border border-border/70 text-muted-foreground hover:border-wine/40"}`}
+              >
+                {f === "Todas" ? "Todas subcategorias" : f}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className={`grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4 ${subFilters.length <= 1 ? "mt-4" : ""}`}>
           {filtered.map((p) => {
             const final = p.promo ?? p.price;
             return (
@@ -168,16 +228,20 @@ function Index() {
                 <div className="relative aspect-[3/4] overflow-hidden bg-blush">
                   <img src={p.image} alt={p.name} className="h-full w-full object-cover object-[78%_0%] transition group-hover:scale-105" />
                   <div className="absolute left-2 top-2 flex flex-col gap-1">
+                    {p.featured && <span className="bg-champagne px-2 py-0.5 text-[10px] text-wine-deep">DESTAQUE</span>}
                     {p.isNew && <span className="bg-wine px-2 py-0.5 text-[10px] text-ivory">NOVO</span>}
-                    {p.best && <span className="bg-champagne px-2 py-0.5 text-[10px] text-wine-deep">MAIS VENDIDO</span>}
-                    {p.promo && <span className="bg-ivory px-2 py-0.5 text-[10px] text-wine">-{Math.round((1 - p.promo / p.price) * 100)}%</span>}
+                    {p.best && <span className="bg-ivory px-2 py-0.5 text-[10px] text-wine">MAIS VENDIDO</span>}
+                    {p.promo && <span className="bg-ivory/90 px-2 py-0.5 text-[10px] text-wine">-{Math.round((1 - p.promo / p.price) * 100)}%</span>}
                   </div>
                   <div className="absolute inset-x-0 bottom-0 translate-y-full bg-wine/90 py-2 text-center text-[10px] tracking-wider text-ivory uppercase transition group-hover:translate-y-0">
                     Ver detalhes
                   </div>
                 </div>
                 <p className="mt-3 text-sm">{p.name}</p>
-                {p.color && <p className="text-[11px] text-muted-foreground">{p.color}</p>}
+                <p className="text-[11px] text-muted-foreground">
+                  {p.subcategory ? `${p.subcategory}` : p.category}
+                  {p.color ? ` · ${p.color}` : ""}
+                </p>
                 <p className="text-sm">
                   {p.promo && <span className="mr-2 text-muted-foreground line-through">{brl(p.price)}</span>}
                   <strong className="text-wine">{brl(final)}</strong>
@@ -187,6 +251,9 @@ function Index() {
             );
           })}
         </div>
+        {filtered.length === 0 && (
+          <p className="mt-10 text-center text-sm text-muted-foreground">Nenhuma peça neste filtro. Ajuste vitrine/destaques no admin.</p>
+        )}
       </section>
 
       <section className="relative flex min-h-[340px] items-center overflow-hidden bg-wine-deep">

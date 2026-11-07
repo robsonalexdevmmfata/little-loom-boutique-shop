@@ -24,6 +24,7 @@ export type Product = {
   slug: string;
   name: string;
   category: string;
+  subcategory?: string;
   price: number;
   promo?: number | undefined;
   stock: number;
@@ -36,9 +37,21 @@ export type Product = {
   color?: string;
   sku?: string;
   sizes: string[];
+  /** Aparece na grade principal da home */
+  showInVitrine?: boolean;
+  /** Aparece em Destaques */
+  featured?: boolean;
+  /** Badge + filtro Novidades */
   isNew?: boolean;
+  /** Badge + filtro Mais vendidos */
   best?: boolean;
   status: "publicado" | "rascunho";
+};
+
+export type CatalogCategory = {
+  name: string;
+  image: string;
+  subcategories: string[];
 };
 
 export type PaymentMethod = "PIX" | "Cartão" | "Boleto";
@@ -104,12 +117,31 @@ export const images = {
   blazers: blazers.url,
 };
 
-export const categories = [
-  { name: "Conjuntos", image: conjuntos.url },
-  { name: "Vestidos", image: vestidos.url },
-  { name: "Macacões", image: macacoes.url },
-  { name: "Blazers", image: blazers.url },
+export const seedCatalog: CatalogCategory[] = [
+  {
+    name: "Conjuntos",
+    image: conjuntos.url,
+    subcategories: ["Tomara que caia", "Alfaiataria", "Saia midi", "Wide leg"],
+  },
+  {
+    name: "Vestidos",
+    image: vestidos.url,
+    subcategories: ["Midi com capa", "Gola alta", "Slip", "Tubinho", "Assimétrico"],
+  },
+  {
+    name: "Macacões",
+    image: macacoes.url,
+    subcategories: ["Alfaiataria", "Frente única", "Pantacourt", "Envelope"],
+  },
+  {
+    name: "Blazers",
+    image: blazers.url,
+    subcategories: ["Oversized", "Alongado", "Cropped"],
+  },
 ];
+
+/** Compatível com telas que só precisam de nome/imagem. */
+export const categories = seedCatalog.map(({ name, image }) => ({ name, image }));
 
 const S = ["PP", "P", "M", "G"];
 const carePadrao = "Lavar à mão ou limpeza a seco. Não usar alvejante. Passar em temperatura baixa pelo avesso.";
@@ -117,7 +149,7 @@ const compCrepe = "97% poliéster · 3% elastano · forro interno em acetato";
 const compAlfaiataria = "70% viscose · 27% poliéster · 3% elastano";
 const compAcetinado = "100% poliéster acetinado de alto brilho";
 
-const seedProducts: Product[] = [
+const seedProductsRaw: Product[] = [
   {
     id: "1",
     slug: "conjunto-tomara-que-caia-bordo",
@@ -425,6 +457,32 @@ const seedProducts: Product[] = [
   },
 ];
 
+const defaultSubcategory: Record<string, string> = {
+  "1": "Tomara que caia",
+  "2": "Midi com capa",
+  "3": "Alfaiataria",
+  "4": "Oversized",
+  "5": "Gola alta",
+  "6": "Alfaiataria",
+  "7": "Slip",
+  "8": "Frente única",
+  "9": "Alongado",
+  "10": "Saia midi",
+  "11": "Tubinho",
+  "12": "Pantacourt",
+  "13": "Cropped",
+  "14": "Assimétrico",
+  "15": "Wide leg",
+  "16": "Envelope",
+};
+
+const seedProducts: Product[] = seedProductsRaw.map((p) => ({
+  ...p,
+  subcategory: p.subcategory ?? defaultSubcategory[p.id] ?? "",
+  showInVitrine: p.showInVitrine ?? true,
+  featured: p.featured ?? !!p.best,
+}));
+
 function daysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -536,8 +594,9 @@ function useLS<T>(key: string, seed: T) {
   return [v, set] as const;
 }
 
-/** v4: catálogo ampliado estilo boutique (substituível quando a cliente enviar as peças reais). */
-export const useProducts = () => useLS("rn-products-v4", seedProducts);
+/** v5: subcategorias + vitrine/destaques/novidades/mais vendidos. */
+export const useProducts = () => useLS("rn-products-v5", seedProducts);
+export const useCatalog = () => useLS("rn-catalog-v1", seedCatalog);
 export const useOrders = () => useLS("rn-orders-v3", seedOrders);
 export const useSettings = () => useLS("rn-settings-v2", seedSettings);
 export const useCart = () => useLS<CartItem[]>("rn-cart", []);
