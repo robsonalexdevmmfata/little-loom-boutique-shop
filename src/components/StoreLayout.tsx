@@ -17,6 +17,8 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
   const [cart] = useCart();
   const [open, setOpen] = useState(false);
   const count = cart.reduce((a, c) => a + c.qty, 0);
+  const ig = s.footerInstagram.replace(/^@/, "");
+  const wa = s.footerWhatsappNumber.replace(/\D/g, "");
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       {s.promoActive && (
@@ -31,14 +33,20 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
           <a href="/#novidades">Novidades</a>
           <a href="/#sobre">Sobre nós</a>
         </nav>
-        <button aria-label="Menu" onClick={() => setOpen(!open)} className="lg:hidden">{open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
+        <button aria-label="Menu" onClick={() => setOpen(!open)} className="lg:hidden">
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
         <Logo />
         <div className="flex justify-end gap-3 sm:gap-6">
           <Search className="h-5 w-5" strokeWidth={1.4} />
-          <Link to="/admin" aria-label="Minha conta"><User className="h-5 w-5" strokeWidth={1.4} /></Link>
+          <Link to="/admin" aria-label="Minha conta">
+            <User className="h-5 w-5" strokeWidth={1.4} />
+          </Link>
           <Link to="/sacola" className="relative" aria-label="Sacola">
             <ShoppingBag className="h-5 w-5" strokeWidth={1.4} />
-            {count > 0 && <span className="absolute -right-2 -top-2 grid h-4 w-4 place-items-center rounded-full bg-champagne text-[10px] text-wine-deep">{count}</span>}
+            {count > 0 && (
+              <span className="absolute -right-2 -top-2 grid h-4 w-4 place-items-center rounded-full bg-champagne text-[10px] text-wine-deep">{count}</span>
+            )}
           </Link>
         </div>
         {open && (
@@ -53,25 +61,36 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
       {children}
       <footer id="sobre" className="bg-wine-deep px-6 py-14 text-ivory/80 md:px-16">
         <div className="grid gap-10 md:grid-cols-4">
-          <div><Logo className="!items-start" /><p className="mt-4 text-sm">Moda feminina sofisticada, elegante e contemporânea.</p></div>
-          <div className="text-sm space-y-2">
+          <div>
+            <Logo className="!items-start" />
+            <p className="mt-4 text-sm">{s.footerAbout}</p>
+          </div>
+          <div className="space-y-2 text-sm">
             <h4 className="font-display text-lg text-champagne">Atendimento</h4>
             <p>
-              <a href="https://wa.me/5511995523083" target="_blank" rel="noopener noreferrer" className="transition hover:text-champagne">
-                WhatsApp (11) 99552-3083
+              <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" className="transition hover:text-champagne">
+                WhatsApp {s.footerWhatsappLabel}
               </a>
             </p>
             <p>
-              <a href="https://instagram.com/reis_noir" target="_blank" rel="noopener noreferrer" className="transition hover:text-champagne">
-                Instagram @reis_noir
+              <a href={`https://instagram.com/${ig}`} target="_blank" rel="noopener noreferrer" className="transition hover:text-champagne">
+                Instagram @{ig}
               </a>
             </p>
           </div>
-          <div className="text-sm space-y-2"><h4 className="font-display text-lg text-champagne">Políticas</h4><p>Privacidade</p><p>Trocas e devoluções</p><p>Entrega</p></div>
-          <div className="text-sm space-y-2"><h4 className="font-display text-lg text-champagne">Pagamento</h4><p>PIX · Cartão em até 12x · Boleto</p></div>
+          <div className="space-y-2 text-sm">
+            <h4 className="font-display text-lg text-champagne">{s.footerPoliciesTitle}</h4>
+            <p>{s.footerPolicy1}</p>
+            <p>{s.footerPolicy2}</p>
+            <p>{s.footerPolicy3}</p>
+          </div>
+          <div className="space-y-2 text-sm">
+            <h4 className="font-display text-lg text-champagne">{s.footerPaymentTitle}</h4>
+            <p>{s.footerPaymentText}</p>
+          </div>
         </div>
         <div className="mt-10 space-y-2 border-t border-ivory/10 pt-6 text-center text-xs">
-          <p>© 2026 REIS NOIR. Todos os direitos reservados.</p>
+          <p>{s.footerCopyright}</p>
           <p>
             Desenvolvido por{" "}
             <a href="https://agenciainfotech.com.br/" target="_blank" rel="noopener noreferrer" className="text-champagne transition hover:underline">

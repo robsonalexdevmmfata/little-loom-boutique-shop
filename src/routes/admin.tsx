@@ -499,23 +499,132 @@ function Orders() {
 
 function Appearance() {
   const [s, setS] = useSettings();
-  const f = (k: keyof typeof s, label: string) => (
+  const set = <K extends keyof typeof s>(k: K, v: (typeof s)[K]) => setS({ ...s, [k]: v });
+  const field = (k: keyof typeof s, label: string, multiline = false) => (
     <label className="block text-sm">
       {label}
-      <input className={input + " mt-1"} value={String(s[k])} onChange={(e) => setS({ ...s, [k]: e.target.value })} />
+      {multiline ? (
+        <textarea className={input + " mt-1 min-h-20 py-2"} value={String(s[k])} onChange={(e) => set(k, e.target.value as never)} />
+      ) : (
+        <input className={input + " mt-1"} value={String(s[k])} onChange={(e) => set(k, e.target.value as never)} />
+      )}
     </label>
   );
+  const box = "border border-border/80 bg-white p-5 shadow-sm space-y-4";
+  const h = "font-display text-xl text-wine";
+
   return (
-    <div className="max-w-xl space-y-4 border border-border/80 bg-white p-5 shadow-sm">
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={s.promoActive} onChange={(e) => setS({ ...s, promoActive: e.target.checked })} /> Barra promocional ativa
-      </label>
-      {f("promoText", "Texto da barra promocional")}
-      {f("heroTitle", "Título do banner")}
-      {f("heroAccent", "Palavra em destaque")}
-      {f("heroButton", "Texto do botão")}
-      {f("editorialTitle", "Frase institucional")}
-      <p className="text-xs text-muted-foreground">As alterações aparecem na loja na hora.</p>
+    <div className="mx-auto max-w-3xl space-y-5">
+      <p className="text-sm text-muted-foreground">Edite os textos de cada seção da loja. As alterações aparecem na hora.</p>
+
+      <section className={box}>
+        <h2 className={h}>Barra promocional</h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={s.promoActive} onChange={(e) => set("promoActive", e.target.checked)} /> Ativa
+        </label>
+        {field("promoText", "Texto")}
+      </section>
+
+      <section className={box}>
+        <h2 className={h}>Banner principal (slide 1)</h2>
+        {field("heroKicker", "Linha superior")}
+        {field("heroTitle", "Título", true)}
+        {field("heroAccent", "Palavra em destaque")}
+        {field("heroButton", "Texto do botão")}
+      </section>
+
+      <section className={box}>
+        <h2 className={h}>Slides do carrossel</h2>
+        {s.slides.map((slide, idx) => (
+          <div key={idx} className="space-y-3 border border-border/60 p-4">
+            <p className="text-xs tracking-wider text-muted-foreground uppercase">Slide {idx + 2}</p>
+            {(
+              [
+                ["kicker", "Linha superior"],
+                ["title", "Título"],
+                ["accent", "Destaque"],
+                ["text", "Texto de apoio"],
+                ["button", "Botão"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="block text-sm">
+                {label}
+                <input
+                  className={input + " mt-1"}
+                  value={slide[key]}
+                  onChange={(e) => {
+                    const slides = s.slides.map((sl, i) => (i === idx ? { ...sl, [key]: e.target.value } : sl));
+                    set("slides", slides);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        ))}
+      </section>
+
+      <section className={box}>
+        <h2 className={h}>Benefícios</h2>
+        {s.benefits.map((b, idx) => (
+          <div key={idx} className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              Título {idx + 1}
+              <input
+                className={input + " mt-1"}
+                value={b.title}
+                onChange={(e) => {
+                  const benefits = s.benefits.map((x, i) => (i === idx ? { ...x, title: e.target.value } : x));
+                  set("benefits", benefits);
+                }}
+              />
+            </label>
+            <label className="block text-sm">
+              Subtítulo {idx + 1}
+              <input
+                className={input + " mt-1"}
+                value={b.subtitle}
+                onChange={(e) => {
+                  const benefits = s.benefits.map((x, i) => (i === idx ? { ...x, subtitle: e.target.value } : x));
+                  set("benefits", benefits);
+                }}
+              />
+            </label>
+          </div>
+        ))}
+      </section>
+
+      <section className={box}>
+        <h2 className={h}>Coleções</h2>
+        {field("collectionsEyebrow", "Linha superior")}
+        {field("collectionsTitle", "Título")}
+      </section>
+
+      <section className={box}>
+        <h2 className={h}>Vitrine de produtos</h2>
+        {field("productsTitle", "Título da seção")}
+      </section>
+
+      <section className={box}>
+        <h2 className={h}>Faixa institucional</h2>
+        {field("editorialTitle", "Frase", true)}
+        {field("editorialKicker", "Linha inferior")}
+        {field("editorialButton", "Texto do botão")}
+      </section>
+
+      <section className={box}>
+        <h2 className={h}>Rodapé</h2>
+        {field("footerAbout", "Texto da marca", true)}
+        {field("footerWhatsappLabel", "WhatsApp (exibição)")}
+        {field("footerWhatsappNumber", "WhatsApp (número com DDI, só dígitos)")}
+        {field("footerInstagram", "Instagram (sem @)")}
+        {field("footerPoliciesTitle", "Título políticas")}
+        {field("footerPolicy1", "Política 1")}
+        {field("footerPolicy2", "Política 2")}
+        {field("footerPolicy3", "Política 3")}
+        {field("footerPaymentTitle", "Título pagamento")}
+        {field("footerPaymentText", "Formas de pagamento")}
+        {field("footerCopyright", "Copyright")}
+      </section>
     </div>
   );
 }

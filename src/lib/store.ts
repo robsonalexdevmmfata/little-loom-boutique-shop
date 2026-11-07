@@ -56,13 +56,42 @@ export type Order = {
   city?: string;
 };
 
+export type BenefitCopy = { title: string; subtitle: string };
+
+export type SlideCopy = {
+  kicker: string;
+  title: string;
+  accent: string;
+  text: string;
+  button: string;
+};
+
 export type Settings = {
   promoText: string;
   promoActive: boolean;
+  heroKicker: string;
   heroTitle: string;
   heroAccent: string;
   heroButton: string;
+  slides: SlideCopy[];
+  benefits: BenefitCopy[];
+  collectionsEyebrow: string;
+  collectionsTitle: string;
+  productsTitle: string;
   editorialTitle: string;
+  editorialKicker: string;
+  editorialButton: string;
+  footerAbout: string;
+  footerWhatsappLabel: string;
+  footerWhatsappNumber: string;
+  footerInstagram: string;
+  footerPoliciesTitle: string;
+  footerPolicy1: string;
+  footerPolicy2: string;
+  footerPolicy3: string;
+  footerPaymentTitle: string;
+  footerPaymentText: string;
+  footerCopyright: string;
 };
 
 export type CartItem = { productId: string; size: string; qty: number };
@@ -420,10 +449,63 @@ const seedOrders: Order[] = [
 const seedSettings: Settings = {
   promoText: "Primeira compra? Ganhe 10% OFF com o cupom BEMVINDA",
   promoActive: true,
+  heroKicker: "REIS NOIR",
   heroTitle: "Uma roupa que chega no lugar, sem você precisar fazer",
   heroAccent: "escândalo.",
   heroButton: "Descubra a coleção",
+  slides: [
+    {
+      kicker: "NOVA COLEÇÃO · VESTIDOS",
+      title: "Entradas que viram",
+      accent: "lembrança.",
+      text: "Vestidos com capa fluida para noites que pedem presença.",
+      button: "Ver vestidos",
+    },
+    {
+      kicker: "CONJUNTOS",
+      title: "Dois tempos, uma só",
+      accent: "assinatura.",
+      text: "Top estruturado e alfaiataria de cintura alta.",
+      button: "Ver conjuntos",
+    },
+    {
+      kicker: "ALFAIATARIA",
+      title: "Poder também se",
+      accent: "veste.",
+      text: "Blazers oversized com corte impecável. Parcele em até 12x.",
+      button: "Ver blazers",
+    },
+    {
+      kicker: "MACACÕES · ATÉ 15% OFF",
+      title: "A cidade acende,",
+      accent: "você também.",
+      text: "Macacões frente única para o fim de tarde ao after.",
+      button: "Aproveitar",
+    },
+  ],
+  benefits: [
+    { title: "Compra segura", subtitle: "Seus dados protegidos" },
+    { title: "Envio para todo o Brasil", subtitle: "Com rastreamento" },
+    { title: "Parcele em até 12x", subtitle: "No cartão de crédito" },
+    { title: "Atendimento especializado", subtitle: "Estamos aqui para você" },
+  ],
+  collectionsEyebrow: "NOSSAS COLEÇÕES",
+  collectionsTitle: "Descubra o seu próximo favorito",
+  productsTitle: "Novidades & Mais vendidos",
   editorialTitle: "Elegância é se sentir bem.",
+  editorialKicker: "REIS NOIR",
+  editorialButton: "Conheça a marca",
+  footerAbout: "Moda feminina sofisticada, elegante e contemporânea.",
+  footerWhatsappLabel: "(11) 99552-3083",
+  footerWhatsappNumber: "5511995523083",
+  footerInstagram: "reis_noir",
+  footerPoliciesTitle: "Políticas",
+  footerPolicy1: "Privacidade",
+  footerPolicy2: "Trocas e devoluções",
+  footerPolicy3: "Entrega",
+  footerPaymentTitle: "Pagamento",
+  footerPaymentText: "PIX · Cartão em até 12x · Boleto",
+  footerCopyright: "© 2026 REIS NOIR. Todos os direitos reservados.",
 };
 
 function useLS<T>(key: string, seed: T) {
@@ -457,7 +539,7 @@ function useLS<T>(key: string, seed: T) {
 /** v4: catálogo ampliado estilo boutique (substituível quando a cliente enviar as peças reais). */
 export const useProducts = () => useLS("rn-products-v4", seedProducts);
 export const useOrders = () => useLS("rn-orders-v3", seedOrders);
-export const useSettings = () => useLS("rn-settings", seedSettings);
+export const useSettings = () => useLS("rn-settings-v2", seedSettings);
 export const useCart = () => useLS<CartItem[]>("rn-cart", []);
 
 export const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

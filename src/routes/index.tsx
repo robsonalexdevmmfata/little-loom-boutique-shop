@@ -26,34 +26,47 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const slideBase = [
-  { img: sPrincipal, alt: "Vestido gola alta bordô", pos: "object-[72%_20%]", kicker: "REIS NOIR", title: "", accent: "", text: "", button: "", href: "#colecoes" },
-  { img: sVestido, alt: "Vestido midi com capa", pos: "object-[72%_15%]", kicker: "NOVA COLEÇÃO · VESTIDOS", title: "Entradas que viram", accent: "lembrança.", text: "Vestidos com capa fluida para noites que pedem presença.", button: "Ver vestidos", href: "#novidades" },
-  { img: sConjunto, alt: "Conjunto tomara que caia", pos: "object-[72%_15%]", kicker: "CONJUNTOS", title: "Dois tempos, uma só", accent: "assinatura.", text: "Top estruturado e alfaiataria de cintura alta.", button: "Ver conjuntos", href: "#novidades" },
-  { img: sBlazer, alt: "Blazer oversized marsala", pos: "object-[75%_20%]", kicker: "ALFAIATARIA", title: "Poder também se", accent: "veste.", text: "Blazers oversized com corte impecável. Parcele em até 12x.", button: "Ver blazers", href: "#novidades" },
-  { img: sMacacao, alt: "Macacão frente única", pos: "object-[72%_15%]", kicker: "MACACÕES · ATÉ 15% OFF", title: "A cidade acende,", accent: "você também.", text: "Macacões frente única para o fim de tarde ao after.", button: "Aproveitar", href: "#novidades" },
+const slideMedia = [
+  { img: sPrincipal, alt: "Vestido gola alta bordô", pos: "object-[72%_20%]", href: "#colecoes" },
+  { img: sVestido, alt: "Vestido midi com capa", pos: "object-[72%_15%]", href: "#novidades" },
+  { img: sConjunto, alt: "Conjunto tomara que caia", pos: "object-[72%_15%]", href: "#novidades" },
+  { img: sBlazer, alt: "Blazer oversized marsala", pos: "object-[75%_20%]", href: "#novidades" },
+  { img: sMacacao, alt: "Macacão frente única", pos: "object-[72%_15%]", href: "#novidades" },
 ];
-const benefits = [
-  { icon: Gem, t: "Compra segura", s: "Seus dados protegidos" },
-  { icon: Truck, t: "Envio para todo o Brasil", s: "Com rastreamento" },
-  { icon: CreditCard, t: "Parcele em até 12x", s: "No cartão de crédito" },
-  { icon: Headphones, t: "Atendimento especializado", s: "Estamos aqui para você" },
-];
+
+const benefitIcons = [Gem, Truck, CreditCard, Headphones];
 
 function Index() {
   const [s] = useSettings();
   const [products] = useProducts();
   const [i, setI] = useState(0);
   const [cat, setCat] = useState("Todas");
-  const slides = slideBase.map((x, k) => (k === 0 ? { ...x, title: s.heroTitle, accent: s.heroAccent, button: s.heroButton } : x));
+
+  const slides = slideMedia.map((media, k) => {
+    if (k === 0) {
+      return {
+        ...media,
+        kicker: s.heroKicker,
+        title: s.heroTitle,
+        accent: s.heroAccent,
+        text: "",
+        button: s.heroButton,
+      };
+    }
+    const copy = s.slides[k - 1] ?? { kicker: "", title: "", accent: "", text: "", button: "" };
+    return { ...media, ...copy };
+  });
+
   const go = (d: number) => setI((p) => (p + d + slides.length) % slides.length);
   const published = products.filter((p) => p.status === "publicado");
   const filtered = cat === "Todas" ? published : published.filter((p) => p.category === cat);
   const filters = ["Todas", ...categories.map((c) => c.name)];
+
   useEffect(() => {
-    const t = setInterval(() => setI((p) => (p + 1) % slideBase.length), 6000);
+    const t = setInterval(() => setI((p) => (p + 1) % slideMedia.length), 6000);
     return () => clearInterval(t);
   }, [i]);
+
   return (
     <StoreLayout overlay>
       <section className="relative h-[100svh] max-h-[900px] min-h-[560px] overflow-hidden bg-wine">
@@ -67,7 +80,10 @@ function Index() {
                 {sl.title} <em className="font-script text-champagne">{sl.accent}</em>
               </h2>
               {sl.text && <p className="mt-4 max-w-md text-sm text-ivory/80 sm:text-base">{sl.text}</p>}
-              <a href={sl.href} className="mt-8 inline-flex w-fit items-center gap-3 border border-ivory px-6 py-3 text-[10px] tracking-[0.2em] text-ivory uppercase transition hover:bg-ivory hover:text-wine-deep sm:px-8 sm:text-xs">
+              <a
+                href={sl.href}
+                className="mt-8 inline-flex w-fit items-center gap-3 border border-ivory px-6 py-3 text-[10px] tracking-[0.2em] text-ivory uppercase transition hover:bg-ivory hover:text-wine-deep sm:px-8 sm:text-xs"
+              >
                 {sl.button} <ArrowRight className="h-3 w-3" />
               </a>
             </div>
@@ -79,36 +95,50 @@ function Index() {
           ))}
         </div>
         <div className="absolute bottom-4 right-4 z-20 flex items-center gap-4 text-sm text-ivory sm:right-10">
-          <button aria-label="Anterior" onClick={() => go(-1)} className="p-1"><ChevronLeft /></button>
-          <span>{i + 1} / {slides.length}</span>
-          <button aria-label="Próximo" onClick={() => go(1)} className="p-1"><ChevronRight /></button>
+          <button aria-label="Anterior" onClick={() => go(-1)} className="p-1">
+            <ChevronLeft />
+          </button>
+          <span>
+            {i + 1} / {slides.length}
+          </span>
+          <button aria-label="Próximo" onClick={() => go(1)} className="p-1">
+            <ChevronRight />
+          </button>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 border-t border-ivory/10 bg-wine-deep px-6 py-6 sm:grid-cols-2 lg:grid-cols-4 text-ivory md:px-16">
-        {benefits.map((b) => (
-          <div key={b.t} className="flex items-center gap-4">
-            <b.icon className="h-8 w-8 shrink-0 text-ivory/80" strokeWidth={1} />
-            <div><p className="font-display">{b.t}</p><p className="text-xs text-ivory/60">{b.s}</p></div>
-          </div>
-        ))}
+      <section className="grid grid-cols-1 gap-5 border-t border-ivory/10 bg-wine-deep px-6 py-6 text-ivory sm:grid-cols-2 md:px-16 lg:grid-cols-4">
+        {s.benefits.map((b, idx) => {
+          const Icon = benefitIcons[idx] ?? Gem;
+          return (
+            <div key={`${b.title}-${idx}`} className="flex items-center gap-4">
+              <Icon className="h-8 w-8 shrink-0 text-ivory/80" strokeWidth={1} />
+              <div>
+                <p className="font-display">{b.title}</p>
+                <p className="text-xs text-ivory/60">{b.subtitle}</p>
+              </div>
+            </div>
+          );
+        })}
       </section>
 
       <section id="colecoes" className="bg-blush px-4 py-10">
-        <p className="text-center text-xs tracking-[0.5em] text-wine">NOSSAS COLEÇÕES</p>
+        <p className="text-center text-xs tracking-[0.5em] text-wine">{s.collectionsEyebrow}</p>
         <div className="mb-8 flex items-center gap-4 px-2 sm:gap-8 sm:px-10">
           <span className="hidden h-px flex-1 bg-wine/40 sm:block" />
-          <h2 className="w-full text-center font-display text-2xl text-wine sm:w-auto sm:text-3xl md:text-4xl">Descubra o seu próximo favorito</h2>
+          <h2 className="w-full text-center font-display text-2xl text-wine sm:w-auto sm:text-3xl md:text-4xl">{s.collectionsTitle}</h2>
           <span className="hidden h-px flex-1 bg-wine/40 sm:block" />
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {categories.map((c) => (
             <a key={c.name} href="#novidades" className="group relative aspect-[3/4] overflow-hidden">
-              <img src={c.image} alt={c.name} className="h-full w-full object-cover transition duration-700 object-top group-hover:scale-105" />
+              <img src={c.image} alt={c.name} className="h-full w-full object-cover object-top transition duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-wine-deep/70 to-transparent" />
               <div className="absolute bottom-4 left-4 text-ivory">
                 <p className="font-display text-xl">{c.name}</p>
-                <p className="flex items-center gap-1 text-xs">Ver coleção <ArrowRight className="h-3 w-3" /></p>
+                <p className="flex items-center gap-1 text-xs">
+                  Ver coleção <ArrowRight className="h-3 w-3" />
+                </p>
               </div>
             </a>
           ))}
@@ -116,7 +146,7 @@ function Index() {
       </section>
 
       <section id="novidades" className="bg-background px-6 py-14 md:px-16">
-        <h2 className="mb-3 text-center font-display text-3xl text-wine">Novidades & Mais vendidos</h2>
+        <h2 className="mb-3 text-center font-display text-3xl text-wine">{s.productsTitle}</h2>
         <p className="mb-6 text-center text-sm text-muted-foreground">{filtered.length} peças disponíveis</p>
         <div className="mb-8 flex flex-wrap justify-center gap-2">
           {filters.map((f) => (
@@ -164,8 +194,10 @@ function Index() {
         <div className="absolute inset-0 bg-gradient-to-r from-wine-deep via-wine-deep/40 to-transparent" />
         <div className="relative px-8 md:px-28">
           <h2 className="max-w-sm font-script text-5xl leading-tight text-ivory">{s.editorialTitle}</h2>
-          <p className="mt-4 text-xs tracking-[0.5em] text-ivory/70">REIS NOIR</p>
-          <a href="#sobre" className="mt-6 inline-flex items-center gap-3 border border-ivory px-8 py-3 text-xs tracking-[0.2em] text-ivory uppercase">Conheça a marca <ArrowRight className="h-3 w-3" /></a>
+          <p className="mt-4 text-xs tracking-[0.5em] text-ivory/70">{s.editorialKicker}</p>
+          <a href="#sobre" className="mt-6 inline-flex items-center gap-3 border border-ivory px-8 py-3 text-xs tracking-[0.2em] text-ivory uppercase">
+            {s.editorialButton} <ArrowRight className="h-3 w-3" />
+          </a>
         </div>
       </section>
     </StoreLayout>
