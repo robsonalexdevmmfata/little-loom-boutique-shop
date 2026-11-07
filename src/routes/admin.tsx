@@ -99,7 +99,7 @@ function Products() {
           <tbody>
             {products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).map((p) => (
               <tr key={p.id} className="border-t border-border">
-                <td className="p-2"><img src={p.image} alt="" className="h-12 w-9 object-cover" /></td>
+                <td className="p-2"><img src={p.image} alt="" className="h-12 w-9 object-cover object-[78%_0%]" /></td>
                 <td className="p-2"><input className={input} value={p.name} onChange={(e) => upd(p.id, { name: e.target.value })} /></td>
                 <td className="p-2"><select className={input} value={p.category} onChange={(e) => { const c = categories.find((x) => x.name === e.target.value)!; upd(p.id, { category: c.name, image: c.image }); }}>{categories.map((c) => <option key={c.name}>{c.name}</option>)}</select></td>
                 <td className="p-2"><input type="number" className={input + " w-24"} value={p.price} onChange={(e) => upd(p.id, { price: +e.target.value })} /></td>

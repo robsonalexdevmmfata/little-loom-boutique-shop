@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
-import hero from "@/assets/hero.jpg.asset.json";
-import conjuntos from "@/assets/conjuntos.jpg.asset.json";
-import vestidos from "@/assets/vestidos.jpg.asset.json";
-import macacoes from "@/assets/macacoes.jpg.asset.json";
-import blazers from "@/assets/blazers.jpg.asset.json";
+import heroImg from "@/assets/slide_principal.jpg";
+import conjuntosImg from "@/assets/cat_conjuntos.jpg";
+import vestidosImg from "@/assets/cat_vestidos.jpg";
+import macacoesImg from "@/assets/cat_macacoes.jpg";
+import blazersImg from "@/assets/cat_blazers.jpg";
+const hero = { url: heroImg };
+const conjuntos = { url: conjuntosImg };
+const vestidos = { url: vestidosImg };
+const macacoes = { url: macacoesImg };
+const blazers = { url: blazersImg };
 
 export type Product = {
   id: string;
@@ -88,7 +93,7 @@ function useLS<T>(key: string, seed: T) {
   return [v, set] as const;
 }
 
-export const useProducts = () => useLS("rn-products", seedProducts);
+export const useProducts = () => useLS("rn-products-v2", seedProducts);
 export const useOrders = () => useLS("rn-orders", seedOrders);
 export const useSettings = () => useLS("rn-settings", seedSettings);
 export const useCart = () => useLS<CartItem[]>("rn-cart", []);

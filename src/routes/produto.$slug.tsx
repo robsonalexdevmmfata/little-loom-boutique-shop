@@ -36,7 +36,7 @@ function ProductPage() {
   return (
     <StoreLayout>
       <div className="grid gap-12 px-6 py-12 md:grid-cols-2 md:px-24">
-        <div className="aspect-[3/4] overflow-hidden bg-blush"><img src={p.image} alt={p.name} className="h-full w-full object-cover transition duration-500 hover:scale-125" /></div>
+        <div className="aspect-[3/4] overflow-hidden bg-blush"><img src={p.image} alt={p.name} className="h-full w-full object-cover object-[78%_0%] transition duration-500 hover:scale-125" /></div>
         <div>
           <p className="text-xs tracking-[0.4em] text-muted-foreground">{p.category.toUpperCase()}</p>
           <h1 className="mt-2 font-display text-4xl text-wine">{p.name}</h1>
