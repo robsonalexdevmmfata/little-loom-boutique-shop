@@ -44,8 +44,12 @@ function Index() {
   const [s] = useSettings();
   const [products] = useProducts();
   const [i, setI] = useState(0);
+  const [cat, setCat] = useState("Todas");
   const slides = slideBase.map((x, k) => (k === 0 ? { ...x, title: s.heroTitle, accent: s.heroAccent, button: s.heroButton } : x));
   const go = (d: number) => setI((p) => (p + d + slides.length) % slides.length);
+  const published = products.filter((p) => p.status === "publicado");
+  const filtered = cat === "Todas" ? published : published.filter((p) => p.category === cat);
+  const filters = ["Todas", ...categories.map((c) => c.name)];
   useEffect(() => {
     const t = setInterval(() => setI((p) => (p + 1) % slideBase.length), 6000);
     return () => clearInterval(t);
@@ -112,9 +116,22 @@ function Index() {
       </section>
 
       <section id="novidades" className="bg-background px-6 py-14 md:px-16">
-        <h2 className="mb-8 text-center font-display text-3xl text-wine">Novidades & Mais vendidos</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-5">
-          {products.filter((p) => p.status === "publicado").map((p) => {
+        <h2 className="mb-3 text-center font-display text-3xl text-wine">Novidades & Mais vendidos</h2>
+        <p className="mb-6 text-center text-sm text-muted-foreground">{filtered.length} peças disponíveis</p>
+        <div className="mb-8 flex flex-wrap justify-center gap-2">
+          {filters.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setCat(f)}
+              className={`px-4 py-2 text-[11px] tracking-[0.15em] uppercase transition ${cat === f ? "bg-wine text-ivory" : "border border-border text-wine hover:border-wine"}`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4">
+          {filtered.map((p) => {
             const final = p.promo ?? p.price;
             return (
               <Link key={p.id} to="/produto/$slug" params={{ slug: p.slug }} className="group">
@@ -125,8 +142,12 @@ function Index() {
                     {p.best && <span className="bg-champagne px-2 py-0.5 text-[10px] text-wine-deep">MAIS VENDIDO</span>}
                     {p.promo && <span className="bg-ivory px-2 py-0.5 text-[10px] text-wine">-{Math.round((1 - p.promo / p.price) * 100)}%</span>}
                   </div>
+                  <div className="absolute inset-x-0 bottom-0 translate-y-full bg-wine/90 py-2 text-center text-[10px] tracking-wider text-ivory uppercase transition group-hover:translate-y-0">
+                    Ver detalhes
+                  </div>
                 </div>
                 <p className="mt-3 text-sm">{p.name}</p>
+                {p.color && <p className="text-[11px] text-muted-foreground">{p.color}</p>}
                 <p className="text-sm">
                   {p.promo && <span className="mr-2 text-muted-foreground line-through">{brl(p.price)}</span>}
                   <strong className="text-wine">{brl(final)}</strong>
