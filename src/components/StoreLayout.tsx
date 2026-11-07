@@ -7,7 +7,7 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <Link to="/" className={`flex flex-col items-center leading-none text-champagne ${className}`}>
       <Crown className="h-5 w-5" strokeWidth={1.2} />
-      <span className="font-display text-3xl tracking-wide">REIS NOIR</span>
+      <span className="font-display text-2xl tracking-wide sm:text-3xl">REIS NOIR</span>
     </Link>
   );
 }
@@ -23,7 +23,7 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
           <Sparkles className="h-3 w-3" /> {s.promoText} <Sparkles className="h-3 w-3" />
         </div>
       )}
-      <header className={`${overlay ? "absolute left-0 right-0 z-20 bg-wine-deep/60" : "bg-wine-deep"} grid grid-cols-3 items-center px-6 py-4 text-ivory md:px-16`}>
+      <header className={`${overlay ? "absolute left-0 right-0 z-20 bg-wine-deep/60" : "bg-wine-deep"} grid grid-cols-[1fr_auto_1fr] items-center px-4 py-4 sm:px-6 text-ivory md:px-16`}>
         <nav className="hidden gap-10 text-sm md:flex">
           <Link to="/">Início</Link>
           <a href="/#colecoes">Coleções</a>
@@ -32,7 +32,7 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
         </nav>
         <div className="md:hidden" />
         <Logo />
-        <div className="flex justify-end gap-6">
+        <div className="flex justify-end gap-3 sm:gap-6">
           <Search className="h-5 w-5" strokeWidth={1.4} />
           <Link to="/admin" aria-label="Minha conta"><User className="h-5 w-5" strokeWidth={1.4} /></Link>
           <Link to="/sacola" className="relative" aria-label="Sacola">
