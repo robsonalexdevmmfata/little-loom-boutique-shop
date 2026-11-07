@@ -33,6 +33,7 @@ function ProductPage() {
   const [added, setAdded] = useState(false);
   const [photo, setPhoto] = useState(0);
   const [openAcc, setOpenAcc] = useState<string>("desc");
+  const [zoom, setZoom] = useState({ on: false, x: 50, y: 50 });
 
   const gallery = useMemo(() => {
     if (!p) return [];
@@ -146,13 +147,34 @@ function ProductPage() {
 
       <div className="grid gap-10 px-6 py-8 pb-28 md:grid-cols-2 md:gap-14 md:px-16 md:pb-16 lg:px-24">
         <div>
-          <div className="relative aspect-[3/4] overflow-hidden bg-blush">
-            <img src={activePhoto} alt={p.name} className="h-full w-full object-cover object-[78%_0%] transition duration-700 hover:scale-105" />
-            <div className="absolute left-3 top-3 flex flex-col gap-1">
+          <div
+            className="group relative aspect-[3/4] overflow-hidden bg-blush max-md:cursor-default md:cursor-zoom-in"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = ((e.clientX - rect.left) / rect.width) * 100;
+              const y = ((e.clientY - rect.top) / rect.height) * 100;
+              setZoom({ on: true, x, y });
+            }}
+            onMouseLeave={() => setZoom((z) => ({ ...z, on: false }))}
+          >
+            <img
+              src={activePhoto}
+              alt={p.name}
+              className="h-full w-full object-cover object-[78%_0%] will-change-transform"
+              style={{
+                transformOrigin: `${zoom.x}% ${zoom.y}%`,
+                transform: zoom.on ? "scale(2.35)" : "scale(1)",
+                transition: zoom.on ? "transform 80ms ease-out" : "transform 280ms ease-out",
+              }}
+            />
+            <div className={`pointer-events-none absolute left-3 top-3 flex flex-col gap-1 transition ${zoom.on ? "opacity-0" : "opacity-100"}`}>
               {p.isNew && <span className="bg-wine px-2.5 py-1 text-[10px] tracking-wider text-ivory">NOVO</span>}
               {p.best && <span className="bg-champagne px-2.5 py-1 text-[10px] tracking-wider text-wine-deep">MAIS VENDIDO</span>}
               {save > 0 && <span className="bg-ivory px-2.5 py-1 text-[10px] tracking-wider text-wine">-{Math.round((save / p.price) * 100)}%</span>}
             </div>
+            <p className={`pointer-events-none absolute bottom-3 left-3 hidden bg-wine-deep/70 px-2.5 py-1 text-[10px] tracking-wider text-ivory uppercase transition md:block ${zoom.on ? "opacity-0" : "opacity-100"}`}>
+              Passe o mouse para ampliar
+            </p>
           </div>
           {gallery.length > 1 && (
             <div className="mt-3 flex gap-2 overflow-x-auto">
@@ -160,7 +182,10 @@ function ProductPage() {
                 <button
                   key={`${img}-${i}`}
                   type="button"
-                  onClick={() => setPhoto(i)}
+                  onClick={() => {
+                    setPhoto(i);
+                    setZoom((z) => ({ ...z, on: false }));
+                  }}
                   className={`h-20 w-14 shrink-0 overflow-hidden border ${photo === i ? "border-wine" : "border-transparent opacity-70 hover:opacity-100"}`}
                 >
                   <img src={img} alt="" className="h-full w-full object-cover object-[78%_0%]" />
