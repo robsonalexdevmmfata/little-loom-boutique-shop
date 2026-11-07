@@ -11,7 +11,7 @@ export type Product = {
   name: string;
   category: string;
   price: number;
-  promo?: number;
+  promo?: number | undefined;
   stock: number;
   image: string;
   description: string;
