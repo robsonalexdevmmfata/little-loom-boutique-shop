@@ -121,9 +121,11 @@ export function ImageUploadField({
       <div className={`relative overflow-hidden rounded-lg border border-dashed border-zinc-300 bg-zinc-50 ${ratio}`}>
         {value ? (
           <>
-            <img src={value} alt="" className="absolute inset-0 h-full w-full object-cover object-[72%_20%]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-zinc-900/75 via-zinc-900/25 to-transparent" />
-            <p className="absolute bottom-2 left-3 text-[10px] tracking-wide text-white/80 uppercase">Preview com fade</p>
+            <div className="absolute inset-0 left-[28%]">
+              <img src={value} alt="" className="h-full w-full object-cover object-[78%_20%]" />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 from-[0%] via-zinc-900/90 via-[35%] to-transparent to-[70%]" />
+            <p className="absolute bottom-2 left-3 z-10 text-[10px] tracking-wide text-white/80 uppercase">Texto esq. · foto dir.</p>
           </>
         ) : (
           <button

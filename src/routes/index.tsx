@@ -90,11 +90,18 @@ function Index() {
       <section className="relative h-[100svh] max-h-[900px] min-h-[560px] overflow-hidden bg-wine">
         {slides.map((sl, k) => (
           <div key={k} className={`absolute inset-0 transition-opacity duration-1000 ${k === i ? "opacity-100" : "pointer-events-none opacity-0"}`} aria-hidden={k !== i}>
-            <img src={sl.img} alt={sl.alt} className={`absolute inset-0 h-full w-full object-cover ${sl.pos}`} />
-            {/* Fundo esmaecido: foto à direita, vinho sólido à esquerda para o texto */}
-            <div className="absolute inset-0 bg-gradient-to-t from-wine-deep via-wine-deep/55 to-wine-deep/20 md:bg-gradient-to-r md:from-wine-deep md:via-wine-deep/85 md:via-40% md:to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[42%] bg-wine-deep/40 md:block" />
-            <div className="relative z-10 flex h-full flex-col justify-end px-6 pb-24 sm:px-10 md:justify-center md:px-20 md:pb-0 md:pt-24 lg:px-32">
+            {/* Foto ancorada à direita · texto fica na faixa vinho à esquerda */}
+            <div className="absolute inset-0 md:left-[30%]">
+              <img
+                src={sl.img}
+                alt={sl.alt}
+                className={`h-full w-full object-cover object-[78%_18%] ${sl.pos}`}
+              />
+            </div>
+            {/* Esmaecer: vinho sólido atrás do texto → transparente na foto */}
+            <div className="absolute inset-0 bg-gradient-to-t from-wine-deep via-wine-deep/70 to-wine-deep/35 md:bg-gradient-to-r md:from-wine-deep md:from-[0%] md:via-wine-deep md:via-[32%] md:to-transparent md:to-[68%]" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[34%] bg-wine-deep md:block" />
+            <div className="relative z-10 flex h-full max-w-xl flex-col justify-end px-6 pb-24 sm:px-10 md:justify-center md:px-20 md:pb-0 md:pt-24 lg:max-w-2xl lg:px-32">
               <p className="mb-4 text-[10px] tracking-[0.5em] text-ivory/70 sm:text-xs">{sl.kicker}</p>
               <h2 className="max-w-[14ch] font-display text-4xl leading-[1.05] text-ivory sm:text-5xl lg:text-6xl xl:text-7xl">
                 {sl.title} <em className="font-script text-champagne">{sl.accent}</em>
@@ -177,9 +184,12 @@ function Index() {
 
       {s.productsBannerImage && (
         <section className="relative flex min-h-[220px] items-center overflow-hidden bg-wine-deep md:min-h-[280px]">
-          <img src={s.productsBannerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[72%_20%]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-wine-deep via-wine-deep/80 via-45% to-transparent" />
-          <div className="relative z-10 px-6 py-12 md:px-16 lg:px-28">
+          <div className="absolute inset-0 md:left-[28%]">
+            <img src={s.productsBannerImage} alt="" className="h-full w-full object-cover object-[78%_20%]" />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-r from-wine-deep from-[0%] via-wine-deep via-[35%] to-transparent to-[70%]" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[32%] bg-wine-deep md:block" />
+          <div className="relative z-10 max-w-xl px-6 py-12 md:px-16 lg:px-28">
             <p className="text-[10px] tracking-[0.4em] text-ivory/60 uppercase">Vitrine</p>
             <h2 className="mt-2 max-w-[16ch] font-display text-3xl text-ivory md:text-4xl">{s.productsTitle}</h2>
           </div>
@@ -272,9 +282,12 @@ function Index() {
       </section>
 
       <section className="relative flex min-h-[340px] items-center overflow-hidden bg-wine-deep">
-        <img src={s.editorialImage || editorial.url} alt="" className="absolute inset-0 h-full w-full object-cover object-right" />
-        <div className="absolute inset-0 bg-gradient-to-r from-wine-deep via-wine-deep/75 via-40% to-transparent" />
-        <div className="relative z-10 px-8 md:px-28">
+        <div className="absolute inset-0 md:left-[28%]">
+          <img src={s.editorialImage || editorial.url} alt="" className="h-full w-full object-cover object-[78%_center]" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-wine-deep from-[0%] via-wine-deep via-[35%] to-transparent to-[70%]" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[32%] bg-wine-deep md:block" />
+        <div className="relative z-10 max-w-xl px-8 md:px-28">
           <h2 className="max-w-sm font-script text-5xl leading-tight text-ivory">{s.editorialTitle}</h2>
           <p className="mt-4 text-xs tracking-[0.5em] text-ivory/70">{s.editorialKicker}</p>
           <a href="#sobre" className="mt-6 inline-flex items-center gap-3 border border-ivory px-8 py-3 text-xs tracking-[0.2em] text-ivory uppercase">
