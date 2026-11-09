@@ -615,10 +615,15 @@ export function resolveCartLines(cart: CartItem[], products: Product[]): CartLin
     .filter((l) => l.p);
 }
 
-export function calcCartTotals(lines: CartLine[], coupon: string) {
+export function calcCartTotals(lines: CartLine[], coupon: string, shippingOverride?: number | null) {
   const subtotal = lines.reduce((a, l) => a + (l.p.promo ?? l.p.price) * l.qty, 0);
   const discount = coupon.trim().toUpperCase() === COUPON_CODE ? subtotal * COUPON_RATE : 0;
-  const shipping = subtotal > 0 && subtotal - discount < FREE_SHIPPING_FROM ? 29.9 : 0;
+  const shipping =
+    shippingOverride != null
+      ? Math.max(0, shippingOverride)
+      : subtotal > 0 && subtotal - discount < FREE_SHIPPING_FROM
+        ? 29.9
+        : 0;
   const total = Math.max(0, subtotal - discount + shipping);
   const items = lines.reduce((a, l) => a + l.qty, 0);
   return { subtotal, discount, shipping, total, items };
