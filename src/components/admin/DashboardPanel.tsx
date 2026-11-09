@@ -16,7 +16,9 @@ export type AdminGo =
   | "Pedidos"
   | "Clientes"
   | "Cupons"
+  | "Relatórios"
   | "Aparência"
+  | "Integrações"
   | "Configurações";
 
 export function DashboardPanel({ onGo }: { onGo: (t: AdminGo) => void }) {
@@ -157,7 +159,7 @@ export function DashboardPanel({ onGo }: { onGo: (t: AdminGo) => void }) {
           ))}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <button type="button" onClick={() => onGo("Produtos")} className="rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:border-wine/30">
             <Package className="h-4 w-4 text-wine" />
             <p className="mt-2 text-sm font-semibold">Catálogo</p>
@@ -172,6 +174,16 @@ export function DashboardPanel({ onGo }: { onGo: (t: AdminGo) => void }) {
             <Users className="h-4 w-4 text-wine" />
             <p className="mt-2 text-sm font-semibold">Base de clientes</p>
             <p className="text-xs text-zinc-500">{uniqueCustomers} compradores</p>
+          </button>
+          <button type="button" onClick={() => onGo("Relatórios")} className="rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:border-wine/30">
+            <TrendingUp className="h-4 w-4 text-wine" />
+            <p className="mt-2 text-sm font-semibold">Relatórios</p>
+            <p className="text-xs text-zinc-500">Receita e pagamentos</p>
+          </button>
+          <button type="button" onClick={() => onGo("Integrações")} className="rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:border-wine/30">
+            <Package className="h-4 w-4 text-wine" />
+            <p className="mt-2 text-sm font-semibold">Integrações</p>
+            <p className="text-xs text-zinc-500">MP e Melhor Envio</p>
           </button>
         </div>
 

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Search, User, ShoppingBag, Crown, Sparkles, Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { useCart, useSettings } from "@/lib/store";
+import { useCart, useCommerce, useSettings } from "@/lib/store";
 
 export function Logo({ className = "" }: { className?: string }) {
   return (
@@ -14,6 +14,7 @@ export function Logo({ className = "" }: { className?: string }) {
 
 export function StoreLayout({ children, overlay = false }: { children: ReactNode; overlay?: boolean }) {
   const [s] = useSettings();
+  const [commerce] = useCommerce();
   const [cart] = useCart();
   const [open, setOpen] = useState(false);
   const count = cart.reduce((a, c) => a + c.qty, 0);
@@ -21,6 +22,11 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
   const wa = s.footerWhatsappNumber.replace(/\D/g, "");
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
+      {commerce.maintenanceMode && (
+        <div className="bg-zinc-900 px-3 py-2.5 text-center text-[11px] text-zinc-100 sm:text-xs">
+          {commerce.maintenanceMessage || "Loja em manutenção."}
+        </div>
+      )}
       {s.promoActive && (
         <div className="flex items-center justify-center gap-2 bg-wine-deep px-3 py-2 text-center text-[10px] text-ivory sm:text-xs">
           <Sparkles className="h-3 w-3" /> {s.promoText} <Sparkles className="h-3 w-3" />

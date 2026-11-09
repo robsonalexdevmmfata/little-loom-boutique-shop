@@ -1,6 +1,7 @@
 import { Check, Download, Upload } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import {
   ADMIN_PASSWORD,
   seedCatalog,
@@ -121,6 +122,28 @@ export function SettingsPanel() {
             value={commerce.lowStockThreshold}
             onChange={(v) => persist({ ...commerce, lowStockThreshold: Number(v) || 0 })}
             hint="unidades"
+          />
+        </Panel>
+
+        <Panel className="space-y-4 p-5">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-900">Modo manutenção</h2>
+            <p className="text-xs text-zinc-500">Exibe aviso no topo da loja para clientes</p>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-zinc-900">Loja em manutenção</p>
+              <p className="text-xs text-zinc-500">Não bloqueia o site — apenas avisa</p>
+            </div>
+            <Switch
+              checked={!!commerce.maintenanceMode}
+              onCheckedChange={(v) => persist({ ...commerce, maintenanceMode: v })}
+            />
+          </div>
+          <Field
+            label="Mensagem de manutenção"
+            value={commerce.maintenanceMessage ?? ""}
+            onChange={(v) => persist({ ...commerce, maintenanceMessage: v })}
           />
         </Panel>
 

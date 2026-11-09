@@ -8,14 +8,17 @@ import {
   Download,
   ExternalLink,
   Eye,
+  BarChart3,
   Filter,
   LayoutDashboard,
   LogOut,
   Megaphone,
   Menu,
+  MessageCircle,
   Package,
   Palette,
   Plus,
+  Plug,
   Search,
   Settings as SettingsIcon,
   ShoppingBag,
@@ -27,9 +30,12 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CommandPalette } from "@/components/admin/CommandPalette";
 import { CustomersPanel } from "@/components/admin/CustomersPanel";
 import { CouponsPanel } from "@/components/admin/CouponsPanel";
-import { DashboardPanel } from "@/components/admin/DashboardPanel";
+import { DashboardPanel, type AdminGo } from "@/components/admin/DashboardPanel";
+import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel";
+import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { Drawer, EmptyState, Field, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
 import { Switch } from "@/components/ui/switch";
@@ -71,6 +77,7 @@ const navGroups: { label: string; items: { id: TabId; icon: typeof LayoutDashboa
       { id: "Painel", icon: LayoutDashboard, desc: "Visão geral" },
       { id: "Pedidos", icon: ShoppingBag, desc: "Vendas" },
       { id: "Clientes", icon: Users, desc: "Compradores" },
+      { id: "Relatórios", icon: BarChart3, desc: "Métricas" },
     ],
   },
   {
@@ -86,11 +93,14 @@ const navGroups: { label: string; items: { id: TabId; icon: typeof LayoutDashboa
   },
   {
     label: "Sistema",
-    items: [{ id: "Configurações", icon: SettingsIcon, desc: "Operação" }],
+    items: [
+      { id: "Integrações", icon: Plug, desc: "Pagamentos e frete" },
+      { id: "Configurações", icon: SettingsIcon, desc: "Operação" },
+    ],
   },
 ];
 
-type TabId = "Painel" | "Produtos" | "Pedidos" | "Clientes" | "Cupons" | "Aparência" | "Configurações";
+type TabId = AdminGo;
 
 function Admin() {
   const [ok, setOk] = useState(false);
@@ -98,15 +108,27 @@ function Admin() {
   const [tab, setTab] = useState<TabId>("Painel");
   const [err, setErr] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const [commerce] = useCommerce();
   const [orders] = useOrders();
   const [products] = useProducts();
   const alertCount =
     orders.filter((o) => o.status === "Aguardando pagamento").length +
-    products.filter((p) => p.stock <= commerce.lowStockThreshold).length;
+    products.filter((p) => p.stock <= (commerce.lowStockThreshold ?? 5)).length;
 
   useEffect(() => {
     if (sessionStorage.getItem("rn-admin") === "1") setOk(true);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   if (!ok) {
@@ -248,6 +270,15 @@ function Admin() {
             <span className="font-medium text-zinc-900">{tab}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCmdOpen(true)}
+              className="hidden h-9 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-xs text-zinc-500 sm:inline-flex hover:bg-zinc-50"
+            >
+              <Search className="h-3.5 w-3.5" />
+              Buscar
+              <kbd className="rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-[10px]">⌘K</kbd>
+            </button>
             {alertCount > 0 && (
               <button
                 type="button"
@@ -257,9 +288,13 @@ function Admin() {
                 {alertCount} alerta{alertCount > 1 ? "s" : ""}
               </button>
             )}
-            <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 sm:inline-flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Online
+            <span
+              className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium sm:inline-flex ${
+                commerce.maintenanceMode ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${commerce.maintenanceMode ? "bg-amber-500" : "bg-emerald-500"}`} />
+              {commerce.maintenanceMode ? "Manutenção" : "Online"}
             </span>
             <Link
               to="/"
@@ -276,10 +311,14 @@ function Admin() {
           {tab === "Pedidos" && <Orders />}
           {tab === "Clientes" && <CustomersPanel />}
           {tab === "Cupons" && <CouponsPanel />}
+          {tab === "Relatórios" && <ReportsPanel />}
           {tab === "Aparência" && <Appearance />}
+          {tab === "Integrações" && <IntegrationsPanel />}
           {tab === "Configurações" && <SettingsPanel />}
         </main>
       </div>
+
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onGo={(t) => setTab(t)} />
     </div>
   );
 }
@@ -499,6 +538,19 @@ function Products() {
             >
               Rascunho
             </button>
+            <button
+              type="button"
+              className="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+              onClick={() => {
+                if (!confirm(`Excluir ${selected.length} produto(s)?`)) return;
+                setProducts(products.filter((p) => !selected.includes(p.id)));
+                setSelected([]);
+                setOpenId(null);
+                toast.message("Produtos removidos");
+              }}
+            >
+              Excluir
+            </button>
             <button type="button" className="text-xs text-zinc-500 hover:underline" onClick={() => setSelected([])}>
               Limpar
             </button>
@@ -716,6 +768,51 @@ function Products() {
               </section>
 
               <section className="space-y-3">
+                <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Mídia</h3>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Imagem principal (URL)
+                  <input className={`${field} mt-1.5`} value={openProduct.image} onChange={(e) => upd(openProduct.id, { image: e.target.value })} />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Galeria (URLs separadas por vírgula)
+                  <textarea
+                    className={`${area} mt-1.5`}
+                    value={(openProduct.gallery ?? []).join(", ")}
+                    onChange={(e) =>
+                      upd(openProduct.id, {
+                        gallery: e.target.value
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      })
+                    }
+                  />
+                </label>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">SEO</h3>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Título SEO
+                  <input
+                    className={`${field} mt-1.5`}
+                    value={openProduct.seoTitle ?? ""}
+                    onChange={(e) => upd(openProduct.id, { seoTitle: e.target.value })}
+                    placeholder={openProduct.name}
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Descrição SEO
+                  <textarea
+                    className={`${area} mt-1.5`}
+                    value={openProduct.seoDescription ?? ""}
+                    onChange={(e) => upd(openProduct.id, { seoDescription: e.target.value })}
+                    placeholder="Resumo para buscadores"
+                  />
+                </label>
+              </section>
+
+              <section className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Onde aparece na loja</h3>
                 <PlacementToggle label="Vitrine da home" hint="Grade principal de produtos" checked={openProduct.showInVitrine !== false} onChange={(v) => upd(openProduct.id, { showInVitrine: v })} />
                 <PlacementToggle label="Destaques" hint="Filtro e selo de destaque" checked={!!openProduct.featured} onChange={(v) => upd(openProduct.id, { featured: v })} />
@@ -766,6 +863,7 @@ function Products() {
 
 function Orders() {
   const [orders, setOrders] = useOrders();
+  const [settings] = useSettings();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todos" | Order["status"]>("todos");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -960,6 +1058,25 @@ function Orders() {
               <p className="mb-2 text-xs font-medium text-zinc-500 uppercase">Status atual</p>
               <StatusPill status={openOrder.status} />
             </div>
+            <label className="block text-xs font-medium text-zinc-600">
+              Nota interna
+              <textarea
+                className={`${area} mt-1.5`}
+                value={openOrder.note ?? ""}
+                onChange={(e) => setOrders(orders.map((x) => (x.id === openOrder.id ? { ...x, note: e.target.value } : x)))}
+                placeholder="Observações da equipe sobre este pedido…"
+              />
+            </label>
+            <a
+              href={`https://wa.me/${(openOrder.phone || settings.footerWhatsappNumber).replace(/\D/g, "")}?text=${encodeURIComponent(
+                `Olá ${openOrder.customer}! Sobre seu pedido ${openOrder.id} na REIS NOIR…`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> Falar no WhatsApp
+            </a>
           </div>
         )}
       </Drawer>

@@ -46,6 +46,8 @@ export type Product = {
   /** Badge + filtro Mais vendidos */
   best?: boolean;
   status: "publicado" | "rascunho";
+  seoTitle?: string;
+  seoDescription?: string;
 };
 
 export type CatalogCategory = {
@@ -67,6 +69,7 @@ export type Order = {
   items: number;
   payment?: PaymentMethod;
   city?: string;
+  note?: string;
 };
 
 export type BenefitCopy = { title: string; subtitle: string };
@@ -612,6 +615,8 @@ export type CommerceConfig = {
   flatShipping: number;
   supportEmail: string;
   lowStockThreshold: number;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
 };
 
 export const seedCoupons: Coupon[] = [
@@ -633,6 +638,8 @@ export const seedCommerce: CommerceConfig = {
   flatShipping: 29.9,
   supportEmail: "contato@reisnoir.com.br",
   lowStockThreshold: 5,
+  maintenanceMode: false,
+  maintenanceMessage: "Estamos em manutenção rápida. Volte em instantes.",
 };
 
 export const useProducts = () => useLS("rn-products-v5", seedProducts);
