@@ -44,7 +44,7 @@ export function SettingsPanel() {
       "rn-activity-v1",
       "rn-admin-users-v1",
       "rn-analytics-v1",
-      "rn-popup-v1",
+      "rn-popup-v2",
       "rn-seo-v1",
       "rn-abandoned-v1",
       "rn-media-v1",

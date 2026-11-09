@@ -70,6 +70,12 @@ export type CampaignPopup = {
   cta: string;
   ctaHref: string;
   dismissDays: number;
+  /** Só na home (recomendado) */
+  homeOnly?: boolean;
+  /** Atraso em ms antes de abrir */
+  delayMs?: number;
+  /** Cupom destacado no popup */
+  couponCode?: string;
 };
 
 export type SeoConfig = {
@@ -139,12 +145,15 @@ export const seedAnalytics: AnalyticsConfig = {
 };
 
 export const seedPopup: CampaignPopup = {
-  active: false,
+  active: true,
   title: "Bem-vinda à REIS NOIR",
-  text: "Ganhe 10% na primeira compra com o cupom BEMVINDA.",
+  text: "Ganhe 10% na primeira compra. Use o cupom no checkout e descubra a coleção.",
   cta: "Ver coleção",
   ctaHref: "/#novidades",
-  dismissDays: 7,
+  dismissDays: 5,
+  homeOnly: true,
+  delayMs: 1600,
+  couponCode: "BEMVINDA",
 };
 
 export const seedSeo: SeoConfig = {
@@ -160,7 +169,8 @@ export const useNewsletter = () => useLS<NewsletterSub[]>("rn-newsletter-v1", []
 export const useActivity = () => useLS<ActivityEntry[]>("rn-activity-v1", []);
 export const useAdminUsers = () => useLS("rn-admin-users-v1", seedAdminUsers);
 export const useAnalytics = () => useLS("rn-analytics-v1", seedAnalytics);
-export const useCampaignPopup = () => useLS("rn-popup-v1", seedPopup);
+/** v2: ativo por padrão + homeOnly / cupom / delay */
+export const useCampaignPopup = () => useLS("rn-popup-v2", seedPopup);
 export const useSeo = () => useLS("rn-seo-v1", seedSeo);
 export const useAbandonedCarts = () => useLS<AbandonedCartSnap[]>("rn-abandoned-v1", []);
 

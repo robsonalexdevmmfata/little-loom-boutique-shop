@@ -39,11 +39,12 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
         </div>
       )}
       <header className={`${overlay ? "absolute left-0 right-0 z-20 bg-wine-deep/60" : "bg-wine-deep"} grid grid-cols-[1fr_auto_1fr] items-center px-4 py-4 sm:px-6 text-ivory md:px-16`}>
-        <nav className="hidden gap-8 whitespace-nowrap text-sm lg:flex">
+        <nav className="hidden gap-7 whitespace-nowrap text-sm lg:flex">
           <Link to="/">Início</Link>
           <a href="/#colecoes">Coleções</a>
           <a href="/#novidades">Novidades</a>
-          <Link to="/faq">FAQ</Link>
+          <a href="/#depoimentos">Avaliações</a>
+          <a href="/#ajuda">Ajuda</a>
         </nav>
         <button aria-label="Menu" onClick={() => setOpen(!open)} className="lg:hidden">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -66,6 +67,8 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
             <Link to="/">Início</Link>
             <a href="/#colecoes">Coleções</a>
             <a href="/#novidades">Novidades</a>
+            <a href="/#depoimentos">Avaliações</a>
+            <a href="/#ajuda">Ajuda</a>
             <Link to="/faq">FAQ</Link>
             <a href="/#sobre">Sobre nós</a>
           </nav>

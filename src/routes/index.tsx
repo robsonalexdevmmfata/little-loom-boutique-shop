@@ -6,6 +6,8 @@ import sVestido from "@/assets/slide_vestido.jpg";
 import sConjunto from "@/assets/slide_conjunto.jpg";
 import sBlazer from "@/assets/slide_blazer.jpg";
 import sMacacao from "@/assets/slide_macacao.jpg";
+import { HomeExtras } from "@/components/HomeExtras";
+import { SeoHead } from "@/components/SeoHead";
 import { StoreLayout } from "@/components/StoreLayout";
 import { brl, useCatalog, useProducts, useSettings } from "@/lib/store";
 import editorial from "@/assets/editorial.jpg.asset.json";
@@ -87,6 +89,7 @@ function Index() {
 
   return (
     <StoreLayout overlay>
+      <SeoHead scope="home" />
       <section className="relative h-[100svh] max-h-[900px] min-h-[560px] overflow-hidden bg-wine">
         {slides.map((sl, k) => (
           <div key={k} className={`absolute inset-0 transition-opacity duration-1000 ${k === i ? "opacity-100" : "pointer-events-none opacity-0"}`} aria-hidden={k !== i}>
@@ -280,6 +283,8 @@ function Index() {
           <p className="mt-10 text-center text-sm text-muted-foreground">Nenhuma peça neste filtro. Ajuste vitrine/destaques no admin.</p>
         )}
       </section>
+
+      <HomeExtras />
 
       <section className="relative flex min-h-[340px] items-center overflow-hidden bg-wine-deep">
         <div className="absolute inset-0 md:left-[28%]">

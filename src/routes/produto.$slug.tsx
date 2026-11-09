@@ -27,7 +27,7 @@ function ProductPage() {
   const { slug } = Route.useParams();
   const [products] = useProducts();
   const [cart, setCart] = useCart();
-  const [reviews] = useReviews();
+  const [reviews, setReviews] = useReviews();
   const nav = useNavigate();
   const p = products.find((x) => x.slug === slug);
   const [size, setSize] = useState("");
@@ -37,6 +37,9 @@ function ProductPage() {
   const [photo, setPhoto] = useState(0);
   const [openAcc, setOpenAcc] = useState<string>("desc");
   const [zoom, setZoom] = useState({ on: false, x: 50, y: 50 });
+  const [revName, setRevName] = useState("");
+  const [revText, setRevText] = useState("");
+  const [revRating, setRevRating] = useState(5);
 
   const gallery = useMemo(() => {
     if (!p) return [];
@@ -359,9 +362,9 @@ function ProductPage() {
         </div>
       </div>
 
-      {productReviews.length > 0 && (
-        <section className="border-t border-border px-6 py-12 md:px-16 lg:px-24">
-          <h2 className="font-display text-2xl text-wine">Avaliações</h2>
+      <section className="border-t border-border px-6 py-12 md:px-16 lg:px-24">
+        <h2 className="font-display text-2xl text-wine">Avaliações</h2>
+        {productReviews.length > 0 ? (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {productReviews.map((r) => (
               <div key={r.id} className="border border-[#e4d8cf] bg-white p-4">
@@ -376,8 +379,61 @@ function ProductPage() {
               </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">Seja a primeira a avaliar esta peça.</p>
+        )}
+        <form
+          className="mt-8 max-w-lg space-y-3 border border-[#e4d8cf] bg-blush/30 p-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!revName.trim() || !revText.trim()) {
+              toast.error("Preencha nome e comentário");
+              return;
+            }
+            setReviews([
+              {
+                id: `r-${Date.now()}`,
+                productId: p.id,
+                author: revName.trim(),
+                rating: revRating,
+                text: revText.trim(),
+                date: new Date().toISOString().slice(0, 10),
+                approved: false,
+              },
+              ...reviews,
+            ]);
+            setRevName("");
+            setRevText("");
+            setRevRating(5);
+            toast.success("Avaliação enviada — aparece após aprovação no painel");
+          }}
+        >
+          <p className="text-sm font-medium text-wine">Deixe sua opinião</p>
+          <input
+            value={revName}
+            onChange={(e) => setRevName(e.target.value)}
+            placeholder="Seu nome"
+            className="h-11 w-full border border-border bg-white px-3 text-sm outline-none focus:border-wine"
+          />
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} type="button" onClick={() => setRevRating(n)} aria-label={`${n} estrelas`} className="p-1">
+                <Star className={`h-5 w-5 ${n <= revRating ? "fill-amber-400 text-amber-400" : "text-zinc-300"}`} />
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={revText}
+            onChange={(e) => setRevText(e.target.value)}
+            placeholder="Como foi o caimento, o tecido, a entrega…"
+            rows={3}
+            className="w-full border border-border bg-white px-3 py-2 text-sm outline-none focus:border-wine"
+          />
+          <button type="submit" className="h-11 bg-wine px-5 text-[11px] tracking-[0.18em] text-ivory uppercase hover:bg-wine-deep">
+            Enviar avaliação
+          </button>
+        </form>
+      </section>
 
       {related.length > 0 && (
         <section className="border-t border-border bg-blush/40 px-6 py-14 md:px-16 lg:px-24">

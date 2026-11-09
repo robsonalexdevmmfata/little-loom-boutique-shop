@@ -177,13 +177,16 @@ function Checkout() {
 
   useEffect(() => {
     if (!lines.length) return;
-    snapshotAbandonedCart({
-      id: "browser",
-      items: lines.map((l) => ({ productId: l.productId, name: l.p.name, size: l.size, qty: l.qty })),
-      totalHint: total,
-      email: email.trim() || undefined,
-      phone: phone.trim() || undefined,
-    });
+    const t = window.setTimeout(() => {
+      snapshotAbandonedCart({
+        id: "browser",
+        items: lines.map((l) => ({ productId: l.productId, name: l.p.name, size: l.size, qty: l.qty })),
+        totalHint: total,
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+      });
+    }, 2500);
+    return () => window.clearTimeout(t);
   }, [lines, total, email, phone]);
 
   const summary = useMemo(
