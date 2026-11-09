@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+import { ImagePlus, Trash2 } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { fileToCompressedDataUrl } from "@/lib/image-upload";
 import type { Order, Product } from "@/lib/store";
 
 export const field =
@@ -88,6 +91,92 @@ export function EmptyState({ title, text, action }: { title: string; text: strin
       <p className="text-sm font-semibold text-zinc-900">{title}</p>
       <p className="mt-1 max-w-sm text-sm text-zinc-500">{text}</p>
       {action && <div className="mt-5">{action}</div>}
+    </div>
+  );
+}
+
+export function ImageUploadField({
+  label,
+  hint,
+  value,
+  onChange,
+  aspect = "video",
+}: {
+  label: string;
+  hint?: string;
+  value?: string;
+  onChange: (v: string | undefined) => void;
+  aspect?: "video" | "portrait" | "wide";
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const ratio = aspect === "portrait" ? "aspect-[3/4]" : aspect === "wide" ? "aspect-[21/9]" : "aspect-video";
+
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-zinc-600">{label}</span>
+        {hint && <span className="text-[10px] text-zinc-400">{hint}</span>}
+      </div>
+      <div className={`relative overflow-hidden rounded-lg border border-dashed border-zinc-300 bg-zinc-50 ${ratio}`}>
+        {value ? (
+          <>
+            <img src={value} alt="" className="absolute inset-0 h-full w-full object-cover object-[72%_20%]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-900/75 via-zinc-900/25 to-transparent" />
+            <p className="absolute bottom-2 left-3 text-[10px] tracking-wide text-white/80 uppercase">Preview com fade</p>
+          </>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-zinc-500 transition hover:bg-zinc-100"
+          >
+            <ImagePlus className="h-6 w-6" />
+            <span className="text-xs font-medium">{busy ? "Processando…" : "Enviar foto"}</span>
+          </button>
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        >
+          <ImagePlus className="h-3.5 w-3.5" /> {value ? "Trocar foto" : "Upload"}
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange(undefined)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-red-200 px-3 text-xs font-medium text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Remover
+          </button>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          setBusy(true);
+          try {
+            const url = await fileToCompressedDataUrl(file);
+            onChange(url);
+            toast.success("Foto atualizada");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Falha no upload");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
     </div>
   );
 }

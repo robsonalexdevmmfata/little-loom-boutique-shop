@@ -80,6 +80,8 @@ export type SlideCopy = {
   accent: string;
   text: string;
   button: string;
+  /** Foto do slide (data URL ou path). Fundo esmaece para o texto. */
+  image?: string;
 };
 
 export type Settings = {
@@ -89,14 +91,20 @@ export type Settings = {
   heroTitle: string;
   heroAccent: string;
   heroButton: string;
+  /** Foto do banner principal (slide 1). */
+  heroImage?: string;
   slides: SlideCopy[];
   benefits: BenefitCopy[];
   collectionsEyebrow: string;
   collectionsTitle: string;
   productsTitle: string;
+  /** Banner da vitrine (seção de produtos) com fade. */
+  productsBannerImage?: string;
   editorialTitle: string;
   editorialKicker: string;
   editorialButton: string;
+  /** Foto da faixa institucional. */
+  editorialImage?: string;
   footerAbout: string;
   footerWhatsappLabel: string;
   footerWhatsappNumber: string;

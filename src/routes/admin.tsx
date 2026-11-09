@@ -37,7 +37,7 @@ import { DashboardPanel, type AdminGo } from "@/components/admin/DashboardPanel"
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
-import { Drawer, EmptyState, Field, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
+import { Drawer, EmptyState, Field, ImageUploadField, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
 import { Switch } from "@/components/ui/switch";
 import { exportOrdersCsv, exportProductsCsv } from "@/lib/admin-utils";
 import {
@@ -449,15 +449,21 @@ function Products() {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {catalog.map((c: CatalogCategory) => (
-              <div key={c.name} className="rounded-lg border border-zinc-200 p-4">
-                <div className="mb-3 flex items-center gap-3">
-                  <img src={c.image} alt="" className="h-12 w-9 rounded object-cover object-top" />
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900">{c.name}</p>
-                    <p className="text-[11px] text-zinc-500">{c.subcategories.length} subcategorias</p>
-                  </div>
+              <div key={c.name} className="space-y-3 rounded-lg border border-zinc-200 p-4">
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">{c.name}</p>
+                  <p className="text-[11px] text-zinc-500">{c.subcategories.length} subcategorias · foto da coleção na home</p>
                 </div>
-                <div className="mb-3 flex flex-wrap gap-1.5">
+                <ImageUploadField
+                  label="Foto da coleção"
+                  value={c.image}
+                  aspect="portrait"
+                  onChange={(v) => {
+                    if (!v) return;
+                    setCatalog(catalog.map((x) => (x.name === c.name ? { ...x, image: v } : x)));
+                  }}
+                />
+                <div className="flex flex-wrap gap-1.5">
                   {c.subcategories.length === 0 && <span className="text-xs text-zinc-400">Nenhuma ainda</span>}
                   {c.subcategories.map((sub) => (
                     <span key={sub} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] text-zinc-700">
@@ -1158,7 +1164,13 @@ function Appearance() {
           )}
 
           {section === "hero" && (
-            <EditorBlock title="Banner principal" subtitle="Primeiro slide do carrossel">
+            <EditorBlock title="Banner principal" subtitle="Primeiro slide · foto com fundo esmaecido">
+              <ImageUploadField
+                label="Foto do banner"
+                hint="JPG/PNG · modelo à direita funciona melhor"
+                value={s.heroImage}
+                onChange={(v) => set("heroImage", v)}
+              />
               <Field label="Linha superior" value={s.heroKicker} onChange={(v) => set("heroKicker", v)} />
               <Field label="Título" value={s.heroTitle} onChange={(v) => set("heroTitle", v)} multiline />
               <div className="grid gap-4 sm:grid-cols-2">
@@ -1169,20 +1181,23 @@ function Appearance() {
           )}
 
           {section === "slides" && (
-            <EditorBlock title="Slides do carrossel" subtitle="Conteúdo dos slides 2 a 5">
+            <EditorBlock title="Slides do carrossel" subtitle="Slides 2 a 5 · cada um com foto e fade">
               <div className="space-y-4">
                 {s.slides.map((slide, idx) => (
-                  <div key={idx} className="rounded-lg border border-zinc-200 bg-zinc-50/60 p-4">
-                    <p className="mb-3 text-xs font-semibold tracking-wide text-zinc-500 uppercase">Slide {idx + 2}</p>
-                    <div className="space-y-3">
-                      <Field label="Linha superior" value={slide.kicker} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, kicker: v } : sl)))} />
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label="Título" value={slide.title} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, title: v } : sl)))} />
-                        <Field label="Destaque" value={slide.accent} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, accent: v } : sl)))} />
-                      </div>
-                      <Field label="Texto de apoio" value={slide.text} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, text: v } : sl)))} multiline />
-                      <Field label="Botão" value={slide.button} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, button: v } : sl)))} />
+                  <div key={idx} className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50/60 p-4">
+                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Slide {idx + 2}</p>
+                    <ImageUploadField
+                      label="Foto do slide"
+                      value={slide.image}
+                      onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, image: v } : sl)))}
+                    />
+                    <Field label="Linha superior" value={slide.kicker} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, kicker: v } : sl)))} />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Título" value={slide.title} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, title: v } : sl)))} />
+                      <Field label="Destaque" value={slide.accent} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, accent: v } : sl)))} />
                     </div>
+                    <Field label="Texto de apoio" value={slide.text} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, text: v } : sl)))} multiline />
+                    <Field label="Botão" value={slide.button} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, button: v } : sl)))} />
                   </div>
                 ))}
               </div>
@@ -1211,13 +1226,26 @@ function Appearance() {
           )}
 
           {section === "products" && (
-            <EditorBlock title="Vitrine" subtitle="Seção de novidades e mais vendidos">
+            <EditorBlock title="Vitrine" subtitle="Banner com fade + título da grade de produtos">
+              <ImageUploadField
+                label="Banner da vitrine"
+                hint="opcional · mesmo efeito de esmaecer do hero"
+                value={s.productsBannerImage}
+                onChange={(v) => set("productsBannerImage", v)}
+                aspect="wide"
+              />
               <Field label="Título da seção" value={s.productsTitle} onChange={(v) => set("productsTitle", v)} />
             </EditorBlock>
           )}
 
           {section === "editorial" && (
-            <EditorBlock title="Faixa institucional" subtitle="Bloco antes do rodapé">
+            <EditorBlock title="Faixa institucional" subtitle="Bloco antes do rodapé · foto com fade">
+              <ImageUploadField
+                label="Foto de fundo"
+                value={s.editorialImage}
+                onChange={(v) => set("editorialImage", v)}
+                aspect="wide"
+              />
               <Field label="Frase" value={s.editorialTitle} onChange={(v) => set("editorialTitle", v)} multiline />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Linha inferior" value={s.editorialKicker} onChange={(v) => set("editorialKicker", v)} />
@@ -1296,12 +1324,16 @@ function AppearancePreview({ section, s }: { section: AppearanceSection; s: Sett
   }
   if (section === "hero") {
     return (
-      <div className="space-y-3 rounded-md bg-wine/40 p-4">
-        <p className="text-[10px] tracking-[0.3em] text-zinc-400">{s.heroKicker}</p>
-        <p className="font-display text-2xl leading-tight text-ivory">
-          {s.heroTitle} <em className="text-champagne not-italic">{s.heroAccent}</em>
-        </p>
-        <span className="inline-block border border-ivory/40 px-3 py-1.5 text-[10px] tracking-wider text-ivory uppercase">{s.heroButton}</span>
+      <div className="relative overflow-hidden rounded-md bg-wine-deep">
+        {s.heroImage && <img src={s.heroImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[72%_20%] opacity-80" />}
+        <div className="absolute inset-0 bg-gradient-to-r from-wine-deep via-wine-deep/80 to-transparent" />
+        <div className="relative space-y-3 p-4">
+          <p className="text-[10px] tracking-[0.3em] text-zinc-400">{s.heroKicker}</p>
+          <p className="font-display text-2xl leading-tight text-ivory">
+            {s.heroTitle} <em className="text-champagne not-italic">{s.heroAccent}</em>
+          </p>
+          <span className="inline-block border border-ivory/40 px-3 py-1.5 text-[10px] tracking-wider text-ivory uppercase">{s.heroButton}</span>
+        </div>
       </div>
     );
   }
@@ -1340,9 +1372,19 @@ function AppearancePreview({ section, s }: { section: AppearanceSection; s: Sett
   }
   if (section === "products") {
     return (
-      <div className="text-center">
-        <p className="font-display text-xl text-ivory">{s.productsTitle}</p>
-        <p className="mt-2 text-[11px] text-zinc-500">Grade de produtos da home</p>
+      <div className="relative overflow-hidden rounded-md">
+        {s.productsBannerImage ? (
+          <>
+            <img src={s.productsBannerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[72%_20%]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-wine-deep via-wine-deep/75 to-transparent" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-wine/40" />
+        )}
+        <div className="relative space-y-2 p-4">
+          <p className="text-[10px] tracking-[0.3em] text-zinc-400 uppercase">Vitrine</p>
+          <p className="font-display text-xl text-ivory">{s.productsTitle}</p>
+        </div>
       </div>
     );
   }
