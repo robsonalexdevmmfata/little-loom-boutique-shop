@@ -15,6 +15,7 @@ import {
   useProducts,
   useSettings,
 } from "@/lib/store";
+import { seedMetaAds, useMetaAds } from "@/lib/meta-ads";
 import { Field, PageHeader, Panel } from "./shared";
 
 export function SettingsPanel() {
@@ -24,6 +25,7 @@ export function SettingsPanel() {
   const [coupons] = useCoupons();
   const [settings] = useSettings();
   const [catalog] = useCatalog();
+  const [meta] = useMetaAds();
   const [saved, setSaved] = useState(false);
 
   const persist = (next: typeof commerce) => {
@@ -42,6 +44,7 @@ export function SettingsPanel() {
       settings,
       catalog,
       commerce,
+      meta,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -64,6 +67,7 @@ export function SettingsPanel() {
         if (data.settings) localStorage.setItem("rn-settings-v2", JSON.stringify(data.settings));
         if (data.catalog) localStorage.setItem("rn-catalog-v1", JSON.stringify(data.catalog));
         if (data.commerce) localStorage.setItem("rn-commerce-v1", JSON.stringify(data.commerce));
+        if (data.meta) localStorage.setItem("rn-meta-ads-v1", JSON.stringify(data.meta));
         window.dispatchEvent(new Event("rn-store"));
         toast.success("Backup importado — recarregue se algo não atualizar");
         window.location.reload();
@@ -189,11 +193,12 @@ export function SettingsPanel() {
             type="button"
             className="text-xs font-medium text-red-600 hover:underline"
             onClick={() => {
-              if (!confirm("Resetar cupons e configurações comerciais para o padrão?")) return;
+              if (!confirm("Resetar cupons, Meta Ads e configurações comerciais para o padrão?")) return;
               localStorage.setItem("rn-coupons-v1", JSON.stringify(seedCoupons));
               localStorage.setItem("rn-commerce-v1", JSON.stringify(seedCommerce));
               localStorage.setItem("rn-catalog-v1", JSON.stringify(seedCatalog));
               localStorage.setItem("rn-settings-v2", JSON.stringify(seedSettings));
+              localStorage.setItem("rn-meta-ads-v1", JSON.stringify(seedMetaAds));
               window.dispatchEvent(new Event("rn-store"));
               toast.message("Padrões restaurados");
               window.location.reload();

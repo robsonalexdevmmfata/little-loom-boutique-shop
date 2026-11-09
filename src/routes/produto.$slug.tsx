@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, CreditCard, Lock, Package, ShieldCheck, ShoppingBag, Sparkles, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/StoreLayout";
+import { metaContentFromProduct, trackMeta } from "@/lib/meta-ads";
 import { brl, getFreeShippingFrom, useCart, useProducts } from "@/lib/store";
 
 export const Route = createFileRoute("/produto/$slug")({
@@ -46,6 +47,11 @@ function ProductPage() {
     return products.filter((x) => x.status === "publicado" && x.id !== p.id && x.category === p.category).slice(0, 4);
   }, [products, p]);
 
+  useEffect(() => {
+    if (!p) return;
+    trackMeta("ViewContent", metaContentFromProduct(p));
+  }, [p?.id]);
+
   if (!p) {
     return (
       <StoreLayout>
@@ -75,6 +81,7 @@ function ProductPage() {
     setSizeError(false);
     const ex = cart.find((c) => c.productId === p.id && c.size === size);
     setCart(ex ? cart.map((c) => (c === ex ? { ...c, qty: Math.min(p.stock, c.qty + qty) } : c)) : [...cart, { productId: p.id, size, qty }]);
+    trackMeta("AddToCart", { ...metaContentFromProduct(p), quantity: qty });
     setAdded(true);
     toast.success(goCheckout ? "Quase sua — finalizando pedido…" : "Peça na sacola. Ela combina com você.");
     if (goCheckout) nav({ to: "/checkout" });

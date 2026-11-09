@@ -7,6 +7,7 @@ import { brl, calcCartTotals, nextOrderId, resolveCartLines, useCart, useOrders,
 import { quoteShipping, type ShippingQuote } from "@/integrations/shipping";
 import { getMpPublicKey } from "@/integrations/mercado-pago";
 import { STORE_MP_PUBLIC_KEY } from "@/integrations/store-credentials";
+import { trackMeta } from "@/lib/meta-ads";
 
 const MercadoPagoBrick = lazy(() =>
   import("@/components/checkout/MercadoPagoBrick").then((m) => ({ default: m.MercadoPagoBrick })),
@@ -135,6 +136,15 @@ function Checkout() {
       },
       ...orders,
     ]);
+    trackMeta("Purchase", {
+      content_ids: lines.map((l) => l.p.sku || l.p.id),
+      contents: lines.map((l) => ({ id: l.p.sku || l.p.id, quantity: l.qty, item_price: l.p.promo ?? l.p.price })),
+      content_type: "product",
+      value: total,
+      currency: "BRL",
+      num_items: items,
+      order_id: draftOrderId,
+    });
     setCart([]);
     sessionStorage.removeItem("rn-coupon");
     setOrderId(draftOrderId);
