@@ -18,6 +18,7 @@ export type AdminGo =
   | "Cupons"
   | "Relatórios"
   | "Aparência"
+  | "Meta Ads"
   | "Integrações"
   | "Configurações";
 
@@ -180,10 +181,10 @@ export function DashboardPanel({ onGo }: { onGo: (t: AdminGo) => void }) {
             <p className="mt-2 text-sm font-semibold">Relatórios</p>
             <p className="text-xs text-zinc-500">Receita e pagamentos</p>
           </button>
-          <button type="button" onClick={() => onGo("Integrações")} className="rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:border-wine/30">
-            <Package className="h-4 w-4 text-wine" />
-            <p className="mt-2 text-sm font-semibold">Integrações</p>
-            <p className="text-xs text-zinc-500">MP e Melhor Envio</p>
+          <button type="button" onClick={() => onGo("Meta Ads")} className="rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:border-wine/30">
+            <TicketPercent className="h-4 w-4 text-wine" />
+            <p className="mt-2 text-sm font-semibold">Meta Ads</p>
+            <p className="text-xs text-zinc-500">Facebook e Instagram</p>
           </button>
         </div>
 

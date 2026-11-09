@@ -10,6 +10,7 @@ const destinations: { id: AdminGo; label: string; hint: string }[] = [
   { id: "Cupons", label: "Ir para Cupons", hint: "Descontos" },
   { id: "Relatórios", label: "Ir para Relatórios", hint: "Métricas" },
   { id: "Aparência", label: "Ir para Aparência", hint: "Conteúdo" },
+  { id: "Meta Ads", label: "Ir para Meta Ads", hint: "Facebook e Instagram" },
   { id: "Integrações", label: "Ir para Integrações", hint: "Pagamentos e frete" },
   { id: "Configurações", label: "Ir para Configurações", hint: "Operação" },
 ];

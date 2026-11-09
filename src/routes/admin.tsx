@@ -19,6 +19,7 @@ import {
   Palette,
   Plus,
   Plug,
+  Printer,
   Search,
   Settings as SettingsIcon,
   ShoppingBag,
@@ -30,16 +31,19 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { CommandPalette } from "@/components/admin/CommandPalette";
 import { CustomersPanel } from "@/components/admin/CustomersPanel";
 import { CouponsPanel } from "@/components/admin/CouponsPanel";
 import { DashboardPanel, type AdminGo } from "@/components/admin/DashboardPanel";
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel";
+import { MetaAdsPanel } from "@/components/admin/MetaAdsPanel";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { Drawer, EmptyState, Field, ImageUploadField, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
 import { Switch } from "@/components/ui/switch";
 import { exportOrdersCsv, exportProductsCsv } from "@/lib/admin-utils";
+import { printOrderSlip } from "@/lib/print-order";
 import {
   ADMIN_PASSWORD,
   brl,
@@ -87,6 +91,7 @@ const navGroups: { label: string; items: { id: TabId; icon: typeof LayoutDashboa
   {
     label: "Marketing",
     items: [
+      { id: "Meta Ads", icon: Megaphone, desc: "Facebook e Instagram" },
       { id: "Cupons", icon: TicketPercent, desc: "Descontos" },
       { id: "Aparência", icon: Palette, desc: "Conteúdo da loja" },
     ],
@@ -279,11 +284,12 @@ function Admin() {
               Buscar
               <kbd className="rounded border border-zinc-200 bg-zinc-50 px-1 py-0.5 text-[10px]">⌘K</kbd>
             </button>
+            <AdminNotifications onGo={(t) => setTab(t)} />
             {alertCount > 0 && (
               <button
                 type="button"
                 onClick={() => setTab(orders.some((o) => o.status === "Aguardando pagamento") ? "Pedidos" : "Produtos")}
-                className="hidden items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 lg:inline-flex"
               >
                 {alertCount} alerta{alertCount > 1 ? "s" : ""}
               </button>
@@ -313,7 +319,8 @@ function Admin() {
           {tab === "Cupons" && <CouponsPanel />}
           {tab === "Relatórios" && <ReportsPanel />}
           {tab === "Aparência" && <Appearance />}
-          {tab === "Integrações" && <IntegrationsPanel />}
+          {tab === "Meta Ads" && <MetaAdsPanel />}
+          {tab === "Integrações" && <IntegrationsPanel onOpenMeta={() => setTab("Meta Ads")} />}
           {tab === "Configurações" && <SettingsPanel />}
         </main>
       </div>
@@ -775,25 +782,41 @@ function Products() {
 
               <section className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Mídia</h3>
-                <label className="block text-xs font-medium text-zinc-600">
-                  Imagem principal (URL)
-                  <input className={`${field} mt-1.5`} value={openProduct.image} onChange={(e) => upd(openProduct.id, { image: e.target.value })} />
-                </label>
-                <label className="block text-xs font-medium text-zinc-600">
-                  Galeria (URLs separadas por vírgula)
-                  <textarea
-                    className={`${area} mt-1.5`}
-                    value={(openProduct.gallery ?? []).join(", ")}
-                    onChange={(e) =>
-                      upd(openProduct.id, {
-                        gallery: e.target.value
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      })
-                    }
+                <ImageUploadField
+                  label="Foto principal"
+                  hint="aparece na loja e na vitrine"
+                  value={openProduct.image}
+                  aspect="portrait"
+                  onChange={(v) => {
+                    if (v) upd(openProduct.id, { image: v });
+                  }}
+                />
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-zinc-600">Galeria</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(openProduct.gallery ?? []).map((g, gi) => (
+                      <div key={`${g.slice(0, 24)}-${gi}`} className="relative h-16 w-12 overflow-hidden rounded border border-zinc-200">
+                        <img src={g} alt="" className="h-full w-full object-cover object-top" />
+                        <button
+                          type="button"
+                          className="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-[9px] text-white"
+                          onClick={() => upd(openProduct.id, { gallery: (openProduct.gallery ?? []).filter((_, i) => i !== gi) })}
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <ImageUploadField
+                    label="Adicionar foto à galeria"
+                    value={undefined}
+                    aspect="portrait"
+                    onChange={(v) => {
+                      if (!v) return;
+                      upd(openProduct.id, { gallery: [...(openProduct.gallery ?? []), v] });
+                    }}
                   />
-                </label>
+                </div>
               </section>
 
               <section className="space-y-3">
@@ -870,6 +893,7 @@ function Products() {
 function Orders() {
   const [orders, setOrders] = useOrders();
   const [settings] = useSettings();
+  const [commerce] = useCommerce();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todos" | Order["status"]>("todos");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -999,8 +1023,8 @@ function Orders() {
         onClose={() => setOpenId(null)}
         footer={
           openOrder ? (
-            <div className="flex items-center justify-between gap-3">
-              <label className="flex flex-1 items-center gap-2 text-xs font-medium text-zinc-600">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="flex min-w-[200px] flex-1 items-center gap-2 text-xs font-medium text-zinc-600">
                 Status
                 <select
                   className={field}
@@ -1015,9 +1039,18 @@ function Orders() {
                   ))}
                 </select>
               </label>
-              <button type="button" onClick={() => setOpenId(null)} className="h-10 rounded-md bg-wine px-4 text-xs font-medium text-ivory hover:bg-wine-deep">
-                Fechar
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => printOrderSlip(openOrder, commerce.storeName || "REIS NOIR")}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-md border border-zinc-200 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                >
+                  <Printer className="h-3.5 w-3.5" /> Imprimir
+                </button>
+                <button type="button" onClick={() => setOpenId(null)} className="h-10 rounded-md bg-wine px-4 text-xs font-medium text-ivory hover:bg-wine-deep">
+                  Fechar
+                </button>
+              </div>
             </div>
           ) : null
         }
@@ -1277,11 +1310,28 @@ function Appearance() {
           )}
         </Panel>
 
-        <aside className="xl:sticky xl:top-20 xl:self-start">
+        <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
+          <Panel className="overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+              <div>
+                <p className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">Prévia ao vivo</p>
+                <p className="text-sm font-medium text-zinc-900">Home da loja</p>
+              </div>
+              <a href="/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-wine hover:underline">
+                Abrir <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+            <div className="bg-zinc-100 p-2">
+              <div className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-inner">
+                <iframe key={savedFlash ? "flash" : "live"} title="Prévia da loja" src="/" className="h-[420px] w-full origin-top scale-[1] bg-white" />
+              </div>
+            </div>
+            <p className="px-4 py-2 text-[11px] text-zinc-500">Salve/edite e a loja atualiza (mesmo navegador). Recarregue a prévia se precisar.</p>
+          </Panel>
           <Panel className="overflow-hidden bg-[#111113] text-zinc-100">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <div>
-                <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">Preview</p>
+                <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">Seção</p>
                 <p className="text-sm font-medium text-white">{current.label}</p>
               </div>
               <Eye className="h-4 w-4 text-zinc-500" />
@@ -1290,7 +1340,6 @@ function Appearance() {
               <AppearancePreview section={section} s={s} />
             </div>
           </Panel>
-          <p className="mt-3 text-center text-[11px] text-zinc-500">As mudanças já refletem na loja aberta.</p>
         </aside>
       </div>
     </div>
