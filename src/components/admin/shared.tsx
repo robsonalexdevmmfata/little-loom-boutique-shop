@@ -2,6 +2,7 @@ import { ImagePlus, Trash2 } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { fileToCompressedDataUrl } from "@/lib/image-upload";
+import { pushToMediaLibrary } from "@/lib/media-library";
 import type { Order, Product } from "@/lib/store";
 
 export const field =
@@ -170,6 +171,7 @@ export function ImageUploadField({
           setBusy(true);
           try {
             const url = await fileToCompressedDataUrl(file);
+            pushToMediaLibrary(url, file.name || "upload");
             onChange(url);
             toast.success("Foto atualizada");
           } catch (err) {

@@ -28,6 +28,26 @@ export function ReportsPanel() {
   const awaiting = filtered.filter((o) => o.status === "Aguardando pagamento").length;
   const conversion = filtered.length ? (paid.length / filtered.length) * 100 : 0;
 
+  const previous = useMemo(() => {
+    if (period === "all") return [] as typeof orders;
+    const days = Number(period);
+    const end = new Date();
+    end.setDate(end.getDate() - days);
+    const start = new Date();
+    start.setDate(start.getDate() - days * 2);
+    const a = start.toISOString().slice(0, 10);
+    const b = end.toISOString().slice(0, 10);
+    return orders.filter((o) => o.date >= a && o.date < b);
+  }, [orders, period]);
+  const prevRevenue = paidRevenue(previous);
+  const prevPaid = previous.filter((o) => o.status !== "Aguardando pagamento").length;
+  const deltaPct = (now: number, was: number) => {
+    if (!was) return now ? 100 : 0;
+    return Math.round(((now - was) / was) * 100);
+  };
+  const revDelta = deltaPct(revenue, prevRevenue);
+  const ordDelta = deltaPct(paid.length, prevPaid);
+
   const byDay = useMemo(() => {
     const map = new Map<string, number>();
     paid.forEach((o) => map.set(o.date, (map.get(o.date) ?? 0) + o.total));
@@ -80,6 +100,21 @@ export function ReportsPanel() {
       />
 
       <div className="space-y-5">
+        {period !== "all" && (
+          <Panel className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm">
+            <p className="text-xs font-medium text-zinc-500 uppercase">vs período anterior</p>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${revDelta >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+              Receita {revDelta >= 0 ? "+" : ""}
+              {revDelta}%
+            </span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ordDelta >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+              Pedidos {ordDelta >= 0 ? "+" : ""}
+              {ordDelta}%
+            </span>
+            <span className="text-xs text-zinc-500">Anterior: {brl(prevRevenue)} · {prevPaid} pagos</span>
+          </Panel>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: "Receita", value: brl(revenue) },

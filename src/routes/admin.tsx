@@ -10,6 +10,7 @@ import {
   Eye,
   BarChart3,
   Filter,
+  Images,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -20,6 +21,7 @@ import {
   Plus,
   Plug,
   Printer,
+  ScrollText,
   Search,
   Settings as SettingsIcon,
   ShoppingBag,
@@ -28,6 +30,7 @@ import {
   TicketPercent,
   Trash2,
   Users,
+  Warehouse,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,7 +40,10 @@ import { CustomersPanel } from "@/components/admin/CustomersPanel";
 import { CouponsPanel } from "@/components/admin/CouponsPanel";
 import { DashboardPanel, type AdminGo } from "@/components/admin/DashboardPanel";
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel";
+import { InventoryPanel } from "@/components/admin/InventoryPanel";
+import { MediaPanel } from "@/components/admin/MediaPanel";
 import { MetaAdsPanel } from "@/components/admin/MetaAdsPanel";
+import { PoliciesPanel } from "@/components/admin/PoliciesPanel";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { Drawer, EmptyState, Field, ImageUploadField, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
@@ -86,7 +92,11 @@ const navGroups: { label: string; items: { id: TabId; icon: typeof LayoutDashboa
   },
   {
     label: "Catálogo",
-    items: [{ id: "Produtos", icon: Package, desc: "Produtos e vitrine" }],
+    items: [
+      { id: "Produtos", icon: Package, desc: "Produtos e vitrine" },
+      { id: "Estoque", icon: Warehouse, desc: "Unidades e alertas" },
+      { id: "Mídia", icon: Images, desc: "Biblioteca de fotos" },
+    ],
   },
   {
     label: "Marketing",
@@ -94,6 +104,7 @@ const navGroups: { label: string; items: { id: TabId; icon: typeof LayoutDashboa
       { id: "Meta Ads", icon: Megaphone, desc: "Facebook e Instagram" },
       { id: "Cupons", icon: TicketPercent, desc: "Descontos" },
       { id: "Aparência", icon: Palette, desc: "Conteúdo da loja" },
+      { id: "Políticas", icon: ScrollText, desc: "Privacidade e trocas" },
     ],
   },
   {
@@ -314,11 +325,14 @@ function Admin() {
         <main className="min-w-0 flex-1 overflow-auto p-4 md:p-6 lg:p-8">
           {tab === "Painel" && <DashboardPanel onGo={(t) => setTab(t)} />}
           {tab === "Produtos" && <Products />}
+          {tab === "Estoque" && <InventoryPanel />}
+          {tab === "Mídia" && <MediaPanel />}
           {tab === "Pedidos" && <Orders />}
           {tab === "Clientes" && <CustomersPanel />}
           {tab === "Cupons" && <CouponsPanel />}
           {tab === "Relatórios" && <ReportsPanel />}
           {tab === "Aparência" && <Appearance />}
+          {tab === "Políticas" && <PoliciesPanel />}
           {tab === "Meta Ads" && <MetaAdsPanel />}
           {tab === "Integrações" && <IntegrationsPanel onOpenMeta={() => setTab("Meta Ads")} />}
           {tab === "Configurações" && <SettingsPanel />}
@@ -1184,7 +1198,7 @@ function Appearance() {
 
         <Panel className="p-5 md:p-6">
           {section === "promo" && (
-            <EditorBlock title="Barra promocional" subtitle="Faixa no topo da loja">
+            <EditorBlock title="Barra promocional" subtitle="Faixa no topo · pode agendar datas">
               <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-zinc-900">Exibir barra</p>
@@ -1193,6 +1207,10 @@ function Appearance() {
                 <Switch checked={s.promoActive} onCheckedChange={(v) => set("promoActive", v)} />
               </div>
               <Field label="Texto da promoção" value={s.promoText} onChange={(v) => set("promoText", v)} hint={`${s.promoText.length} caracteres`} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Início (opcional)" type="date" value={s.promoStart ?? ""} onChange={(v) => set("promoStart", v)} hint="YYYY-MM-DD" />
+                <Field label="Fim (opcional)" type="date" value={s.promoEnd ?? ""} onChange={(v) => set("promoEnd", v)} hint="só neste intervalo" />
+              </div>
             </EditorBlock>
           )}
 

@@ -4,6 +4,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAx
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { exportOrdersCsv } from "@/lib/admin-utils";
 import { brl, categories, paidRevenue, useCommerce, useCoupons, useOrders, useProducts, type Order } from "@/lib/store";
+import { OnboardingTour } from "./OnboardingTour";
 import { PageHeader, Panel, StatusPill } from "./shared";
 
 const revenueConfig = {
@@ -13,11 +14,14 @@ const revenueConfig = {
 export type AdminGo =
   | "Painel"
   | "Produtos"
+  | "Estoque"
+  | "Mídia"
   | "Pedidos"
   | "Clientes"
   | "Cupons"
   | "Relatórios"
   | "Aparência"
+  | "Políticas"
   | "Meta Ads"
   | "Integrações"
   | "Configurações";
@@ -87,6 +91,17 @@ export function DashboardPanel({ onGo }: { onGo: (t: AdminGo) => void }) {
     { label: "Clientes", value: String(uniqueCustomers), hint: `${published} produtos · ${activeCoupons} cupons`, icon: Users },
   ];
 
+  const activity = useMemo(() => {
+    const rows: { id: string; text: string; when: string; go: AdminGo }[] = [];
+    orders.slice(0, 5).forEach((o) => {
+      rows.push({ id: `ord-${o.id}`, text: `Pedido ${o.id} · ${o.customer} · ${o.status}`, when: o.date, go: "Pedidos" });
+    });
+    lowStock.slice(0, 3).forEach((p) => {
+      rows.push({ id: `stk-${p.id}`, text: `Estoque baixo: ${p.name} (${p.stock})`, when: "agora", go: "Estoque" });
+    });
+    return rows.slice(0, 8);
+  }, [orders, lowStock]);
+
   return (
     <div>
       <PageHeader
@@ -109,6 +124,8 @@ export function DashboardPanel({ onGo }: { onGo: (t: AdminGo) => void }) {
           </div>
         }
       />
+
+      <OnboardingTour onGo={onGo} />
 
       <div className="space-y-5">
         {checklistDone < checklist.length && (
@@ -255,6 +272,20 @@ export function DashboardPanel({ onGo }: { onGo: (t: AdminGo) => void }) {
           </Panel>
 
           <Panel className="overflow-hidden">
+            <div className="border-b border-zinc-100 px-5 py-4">
+              <h2 className="text-sm font-semibold text-zinc-900">Atividade recente</h2>
+              <p className="text-xs text-zinc-500">Pedidos e alertas de estoque</p>
+              <ul className="mt-3 space-y-2">
+                {activity.map((a) => (
+                  <li key={a.id}>
+                    <button type="button" onClick={() => onGo(a.go)} className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-zinc-50">
+                      <span className="truncate text-zinc-700">{a.text}</span>
+                      <span className="shrink-0 text-zinc-400">{a.when}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900">Pedidos recentes</h2>

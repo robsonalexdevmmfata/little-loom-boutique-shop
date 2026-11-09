@@ -20,6 +20,10 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
   const count = cart.reduce((a, c) => a + c.qty, 0);
   const ig = s.footerInstagram.replace(/^@/, "");
   const wa = s.footerWhatsappNumber.replace(/\D/g, "");
+  const today = new Date().toISOString().slice(0, 10);
+  const promoInWindow =
+    (!s.promoStart || s.promoStart <= today) && (!s.promoEnd || s.promoEnd >= today);
+  const showPromo = s.promoActive && promoInWindow;
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       {commerce.maintenanceMode && (
@@ -27,7 +31,7 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
           {commerce.maintenanceMessage || "Loja em manutenção."}
         </div>
       )}
-      {s.promoActive && (
+      {showPromo && (
         <div className="flex items-center justify-center gap-2 bg-wine-deep px-3 py-2 text-center text-[10px] text-ivory sm:text-xs">
           <Sparkles className="h-3 w-3" /> {s.promoText} <Sparkles className="h-3 w-3" />
         </div>

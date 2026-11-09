@@ -87,6 +87,12 @@ export type SlideCopy = {
 export type Settings = {
   promoText: string;
   promoActive: boolean;
+  /** ISO date YYYY-MM-DD — se preenchido, só mostra a promo neste intervalo */
+  promoStart?: string;
+  promoEnd?: string;
+  policyBody1?: string;
+  policyBody2?: string;
+  policyBody3?: string;
   heroKicker: string;
   heroTitle: string;
   heroAccent: string;
@@ -518,6 +524,11 @@ const seedOrders: Order[] = [
 export const seedSettings: Settings = {
   promoText: "Primeira compra? Ganhe 10% OFF com o cupom BEMVINDA",
   promoActive: true,
+  promoStart: "",
+  promoEnd: "",
+  policyBody1: "Cuidamos dos seus dados com responsabilidade. Usamos informações apenas para processar pedidos e atendimento.",
+  policyBody2: "Trocas em até 7 dias após o recebimento, com a peça sem uso e com etiquetas. Fale conosco pelo WhatsApp.",
+  policyBody3: "Enviamos para todo o Brasil com rastreio. Frete grátis a partir do valor configurado na loja.",
   heroKicker: "REIS NOIR",
   heroTitle: "Uma roupa que chega no lugar, sem você precisar fazer",
   heroAccent: "escândalo.",
