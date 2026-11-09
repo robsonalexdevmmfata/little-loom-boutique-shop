@@ -1,37 +1,45 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  AlertTriangle,
-  ArrowUpRight,
   Check,
+  ChevronRight,
   Copy,
   Crown,
+  Download,
   ExternalLink,
   Eye,
+  Filter,
   LayoutDashboard,
   LogOut,
   Megaphone,
+  Menu,
   Package,
   Palette,
   Plus,
   Search,
+  Settings as SettingsIcon,
   ShoppingBag,
   Sparkles,
   Store,
+  TicketPercent,
   Trash2,
-  TrendingUp,
+  Users,
+  X,
 } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { CustomersPanel } from "@/components/admin/CustomersPanel";
+import { CouponsPanel } from "@/components/admin/CouponsPanel";
+import { DashboardPanel } from "@/components/admin/DashboardPanel";
+import { SettingsPanel } from "@/components/admin/SettingsPanel";
+import { Drawer, EmptyState, Field, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
 import { Switch } from "@/components/ui/switch";
+import { exportOrdersCsv, exportProductsCsv } from "@/lib/admin-utils";
 import {
   ADMIN_PASSWORD,
   brl,
-  categories,
   images,
-  paidRevenue,
   useCatalog,
+  useCommerce,
   useOrders,
   useProducts,
   useSettings,
@@ -44,9 +52,9 @@ import {
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Painel administrativo — REIS NOIR" },
+      { title: "Administração — REIS NOIR" },
       { name: "description", content: "Gerencie produtos, pedidos e conteúdo da loja REIS NOIR." },
-      { property: "og:title", content: "Painel — REIS NOIR" },
+      { property: "og:title", content: "Administração — REIS NOIR" },
       { property: "og:description", content: "Painel administrativo REIS NOIR." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -56,33 +64,54 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
-const tabs = [
-  { id: "Painel", icon: LayoutDashboard, desc: "Visão geral" },
-  { id: "Produtos", icon: Package, desc: "Catálogo" },
-  { id: "Pedidos", icon: ShoppingBag, desc: "Vendas" },
-  { id: "Aparência", icon: Palette, desc: "Conteúdo da loja" },
-] as const;
+const navGroups: { label: string; items: { id: TabId; icon: typeof LayoutDashboard; desc: string }[] }[] = [
+  {
+    label: "Principal",
+    items: [
+      { id: "Painel", icon: LayoutDashboard, desc: "Visão geral" },
+      { id: "Pedidos", icon: ShoppingBag, desc: "Vendas" },
+      { id: "Clientes", icon: Users, desc: "Compradores" },
+    ],
+  },
+  {
+    label: "Catálogo",
+    items: [{ id: "Produtos", icon: Package, desc: "Produtos e vitrine" }],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { id: "Cupons", icon: TicketPercent, desc: "Descontos" },
+      { id: "Aparência", icon: Palette, desc: "Conteúdo da loja" },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [{ id: "Configurações", icon: SettingsIcon, desc: "Operação" }],
+  },
+];
 
-type TabId = (typeof tabs)[number]["id"];
-
-const fieldClass =
-  "h-11 w-full border border-[#e8e0da] bg-[#fbfaf8] px-3 text-sm text-foreground outline-none transition focus:border-wine focus:bg-white focus:ring-2 focus:ring-wine/10";
-const areaClass =
-  "min-h-[88px] w-full border border-[#e8e0da] bg-[#fbfaf8] px-3 py-2.5 text-sm outline-none transition focus:border-wine focus:bg-white focus:ring-2 focus:ring-wine/10";
+type TabId = "Painel" | "Produtos" | "Pedidos" | "Clientes" | "Cupons" | "Aparência" | "Configurações";
 
 function Admin() {
   const [ok, setOk] = useState(false);
   const [pw, setPw] = useState("");
   const [tab, setTab] = useState<TabId>("Painel");
   const [err, setErr] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const [commerce] = useCommerce();
+  const [orders] = useOrders();
+  const [products] = useProducts();
+  const alertCount =
+    orders.filter((o) => o.status === "Aguardando pagamento").length +
+    products.filter((p) => p.stock <= commerce.lowStockThreshold).length;
+
   useEffect(() => {
     if (sessionStorage.getItem("rn-admin") === "1") setOk(true);
   }, []);
 
   if (!ok) {
     return (
-      <div className="relative grid min-h-screen place-items-center overflow-hidden bg-wine-deep px-4">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(217,195,165,0.18),_transparent_55%)]" />
+      <div className="grid min-h-screen place-items-center bg-zinc-100 px-4">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -95,15 +124,17 @@ function Admin() {
               toast.error("Senha incorreta");
             }
           }}
-          className="relative w-full max-w-md border border-ivory/10 bg-wine/40 p-8 shadow-2xl backdrop-blur-md sm:p-10"
+          className="w-full max-w-[400px] rounded-xl border border-zinc-200 bg-white p-8 shadow-sm"
         >
           <div className="mb-8 flex flex-col items-center text-center">
-            <Crown className="h-7 w-7 text-champagne" strokeWidth={1.2} />
-            <h1 className="mt-3 font-display text-3xl text-ivory">REIS NOIR</h1>
-            <p className="mt-1 text-[11px] tracking-[0.35em] text-ivory/50 uppercase">Console da loja</p>
+            <span className="grid h-11 w-11 place-items-center rounded-lg bg-wine text-ivory">
+              <Crown className="h-5 w-5" strokeWidth={1.4} />
+            </span>
+            <h1 className="mt-4 text-lg font-semibold tracking-tight text-zinc-900">REIS NOIR</h1>
+            <p className="mt-1 text-sm text-zinc-500">Acesse o painel da loja</p>
           </div>
-          <label className="block text-xs tracking-wide text-ivory/70">
-            Senha de acesso
+          <label className="block text-sm font-medium text-zinc-700">
+            Senha
             <input
               type="password"
               value={pw}
@@ -111,298 +142,146 @@ function Admin() {
                 setPw(e.target.value);
                 setErr(false);
               }}
-              className={`mt-2 h-12 w-full border bg-wine-deep/60 px-3 text-ivory outline-none placeholder:text-ivory/30 focus:border-champagne ${err ? "border-red-400/60" : "border-ivory/15"}`}
-              placeholder="••••"
+              className={`mt-1.5 ${field} ${err ? "border-red-400 focus:border-red-500 focus:ring-red-200" : ""}`}
+              placeholder="Digite sua senha"
               autoFocus
             />
           </label>
-          <button type="submit" className="mt-6 h-12 w-full bg-champagne text-[11px] tracking-[0.25em] text-wine-deep uppercase transition hover:bg-ivory">
-            Entrar no painel
+          <button
+            type="submit"
+            className="mt-5 h-11 w-full rounded-md bg-wine text-sm font-medium text-ivory transition hover:bg-wine-deep"
+          >
+            Entrar
           </button>
-          <p className="mt-4 text-center text-[11px] text-ivory/40">Demo · senha 1234</p>
         </form>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f3efe9] font-sans text-foreground">
-      <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-wine/20 bg-wine-deep text-ivory">
-        <div className="border-b border-ivory/10 px-5 py-5">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center border border-champagne/40 text-champagne">
-              <Crown className="h-4 w-4" strokeWidth={1.3} />
-            </span>
-            <span>
-              <span className="block font-display text-xl leading-none text-champagne">REIS NOIR</span>
-              <span className="mt-1 block text-[10px] tracking-[0.28em] text-ivory/40 uppercase">Commerce OS</span>
-            </span>
-          </Link>
-        </div>
-        <nav className="flex flex-1 flex-col gap-1 p-3">
-          {tabs.map(({ id, icon: Icon, desc }) => {
-            const active = tab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                className={`group flex items-center gap-3 px-3 py-3 text-left transition ${active ? "bg-champagne/15 text-champagne" : "text-ivory/65 hover:bg-ivory/5 hover:text-ivory"}`}
-              >
-                <Icon className={`h-4 w-4 ${active ? "text-champagne" : "opacity-70"}`} strokeWidth={1.5} />
-                <span>
-                  <span className="block text-sm font-medium">{id}</span>
-                  <span className={`block text-[10px] ${active ? "text-champagne/70" : "text-ivory/35"}`}>{desc}</span>
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-        <div className="border-t border-ivory/10 p-4">
-          <div className="mb-3 flex items-center gap-2 px-1 text-[11px] text-ivory/50">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            Loja online
+    <div className="flex min-h-screen bg-[#f4f4f5] font-sans text-zinc-900">
+      {navOpen && <button type="button" aria-label="Fechar menu" className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={() => setNavOpen(false)} />}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-[240px] flex-col border-r border-zinc-800 bg-[#111113] text-zinc-100 transition-transform lg:static lg:translate-x-0 ${
+          navOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+          <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
+          <span className="grid h-8 w-8 place-items-center rounded-md bg-wine text-ivory">
+            <Crown className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold tracking-tight">{commerce.storeName}</p>
+            <p className="text-[11px] text-zinc-500">CMS · Administração</p>
           </div>
+          <button type="button" className="ml-auto rounded-md p-1 text-zinc-400 lg:hidden" onClick={() => setNavOpen(false)}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto p-2.5">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p className="px-2.5 pb-1.5 pt-1 text-[10px] font-medium tracking-[0.14em] text-zinc-500 uppercase">{group.label}</p>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map(({ id, icon: Icon, desc }) => {
+                  const active = tab === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setTab(id);
+                        setNavOpen(false);
+                      }}
+                      className={`flex items-center gap-3 rounded-md px-2.5 py-2.5 text-left transition ${
+                        active ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+                      }`}
+                    >
+                      <Icon className={`h-4 w-4 shrink-0 ${active ? "text-champagne" : ""}`} strokeWidth={1.6} />
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-medium">{id}</span>
+                        <span className={`block text-[11px] ${active ? "text-zinc-400" : "text-zinc-600"}`}>{desc}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="border-t border-white/10 p-3">
+          <div className="mb-2 flex items-center gap-2 px-1 text-[11px] text-zinc-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Loja publicada
+          </div>
+          <Link
+            to="/"
+            className="mb-1 flex items-center gap-2 rounded-md px-2 py-2 text-[13px] text-zinc-400 transition hover:bg-white/5 hover:text-white"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Ver loja
+          </Link>
           <button
             type="button"
             onClick={() => {
               sessionStorage.removeItem("rn-admin");
               setOk(false);
             }}
-            className="flex w-full items-center gap-2 px-2 py-2 text-sm text-ivory/45 transition hover:text-ivory"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-zinc-400 transition hover:bg-white/5 hover:text-white"
           >
-            <LogOut className="h-4 w-4" /> Sair
+            <LogOut className="h-3.5 w-3.5" /> Sair
           </button>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[#e5ddd4] bg-[#f3efe9]/90 px-6 backdrop-blur-md">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Store className="h-3.5 w-3.5" />
-            <span>reisnoir</span>
-            <span className="text-[#d4c8bc]">/</span>
-            <span className="font-medium text-wine">{tab}</span>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-zinc-200 bg-white px-4 md:px-6">
+          <button type="button" className="rounded-md border border-zinc-200 p-2 text-zinc-600 lg:hidden" onClick={() => setNavOpen(true)}>
+            <Menu className="h-4 w-4" />
+          </button>
+          <div className="flex min-w-0 items-center gap-1.5 text-sm text-zinc-500">
+            <Store className="hidden h-3.5 w-3.5 sm:block" />
+            <span className="hidden sm:inline">Loja</span>
+            <ChevronRight className="hidden h-3.5 w-3.5 text-zinc-300 sm:block" />
+            <span className="font-medium text-zinc-900">{tab}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
-              <Sparkles className="h-3 w-3 text-champagne" />
-              Salvamento automático
+          <div className="ml-auto flex items-center gap-2">
+            {alertCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setTab(orders.some((o) => o.status === "Aguardando pagamento") ? "Pedidos" : "Produtos")}
+                className="hidden items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 sm:inline-flex"
+              >
+                {alertCount} alerta{alertCount > 1 ? "s" : ""}
+              </button>
+            )}
+            <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 sm:inline-flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Online
             </span>
             <Link
               to="/"
-              className="inline-flex h-9 items-center gap-2 border border-wine/20 bg-white px-3 text-xs text-wine transition hover:border-wine hover:bg-wine hover:text-ivory"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
             >
               Ver loja <ExternalLink className="h-3 w-3" />
             </Link>
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 overflow-auto p-5 md:p-8">
-          <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] tracking-[0.28em] text-muted-foreground uppercase">Painel administrativo</p>
-              <h1 className="mt-1 font-display text-3xl text-wine md:text-4xl">{tab}</h1>
-            </div>
-          </div>
-          {tab === "Painel" && <Dashboard onGoOrders={() => setTab("Pedidos")} />}
+        <main className="min-w-0 flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+          {tab === "Painel" && <DashboardPanel onGo={(t) => setTab(t)} />}
           {tab === "Produtos" && <Products />}
           {tab === "Pedidos" && <Orders />}
+          {tab === "Clientes" && <CustomersPanel />}
+          {tab === "Cupons" && <CouponsPanel />}
           {tab === "Aparência" && <Appearance />}
+          {tab === "Configurações" && <SettingsPanel />}
         </main>
       </div>
     </div>
   );
-}
-
-const revenueConfig = {
-  receita: { label: "Receita", color: "oklch(0.27 0.09 12)" },
-} satisfies ChartConfig;
-
-const statusConfig = {
-  value: { label: "Pedidos" },
-} satisfies ChartConfig;
-
-function Dashboard({ onGoOrders }: { onGoOrders: () => void }) {
-  const [orders] = useOrders();
-  const [products] = useProducts();
-  const revenue = paidRevenue(orders);
-  const awaiting = orders.filter((o) => o.status === "Aguardando pagamento").length;
-  const lowStock = products.filter((p) => p.stock <= 5);
-  const ticket = orders.length ? revenue / Math.max(1, orders.filter((o) => o.status !== "Aguardando pagamento").length) : 0;
-
-  const salesByDay = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      const key = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
-      const dayOrders = orders.filter((o) => o.date === key && o.status !== "Aguardando pagamento");
-      return { day: label, receita: Math.round(dayOrders.reduce((a, o) => a + o.total, 0) * 100) / 100 };
-    });
-  }, [orders]);
-
-  const byStatus = useMemo(() => {
-    const map: Record<Order["status"], number> = {
-      "Aguardando pagamento": 0,
-      Pago: 0,
-      Enviado: 0,
-      Entregue: 0,
-    };
-    orders.forEach((o) => {
-      map[o.status] += 1;
-    });
-    return [
-      { name: "Aguardando", value: map["Aguardando pagamento"], fill: "oklch(0.75 0.08 70)" },
-      { name: "Pago", value: map.Pago, fill: "oklch(0.27 0.09 12)" },
-      { name: "Enviado", value: map.Enviado, fill: "oklch(0.45 0.06 20)" },
-      { name: "Entregue", value: map.Entregue, fill: "oklch(0.8 0.06 40)" },
-    ];
-  }, [orders]);
-
-  const categoryBars = useMemo(
-    () => categories.map((c) => ({ cat: c.name, estoque: products.filter((p) => p.category === c.name).reduce((a, p) => a + p.stock, 0) })),
-    [products],
-  );
-
-  const kpis = [
-    { label: "Faturamento líquido", value: brl(revenue), hint: "Pedidos convertidos", icon: TrendingUp },
-    { label: "Ticket médio", value: brl(ticket), hint: "Por pedido pago", icon: ArrowUpRight },
-    { label: "Pedidos", value: String(orders.length), hint: `${awaiting} aguardando`, icon: ShoppingBag },
-    { label: "Estoque baixo", value: String(lowStock.length), hint: "≤ 5 unidades", icon: AlertTriangle },
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {kpis.map(({ label, value, hint, icon: Icon }) => (
-          <div key={label} className="relative overflow-hidden border border-[#e5ddd4] bg-white p-5 shadow-[0_1px_0_rgba(61,20,24,0.04)]">
-            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-wine/[0.03]" />
-            <div className="flex items-start justify-between">
-              <p className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</p>
-              <span className="grid h-8 w-8 place-items-center bg-blush text-wine">
-                <Icon className="h-4 w-4" strokeWidth={1.5} />
-              </span>
-            </div>
-            <p className="mt-3 font-display text-3xl text-wine">{value}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="border border-[#e5ddd4] bg-white p-5 shadow-[0_1px_0_rgba(61,20,24,0.04)] lg:col-span-3">
-          <h2 className="font-display text-xl text-wine">Receita · 7 dias</h2>
-          <p className="mb-4 text-xs text-muted-foreground">Vendas confirmadas por dia</p>
-          <ChartContainer config={revenueConfig} className="aspect-[16/7] w-full">
-            <AreaChart data={salesByDay} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
-              <defs>
-                <linearGradient id="fillReceita" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-receita)" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="var(--color-receita)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
-              <YAxis tickLine={false} axisLine={false} tickMargin={8} width={48} tickFormatter={(v) => `${Math.round(v / 100) / 10}k`} />
-              <ChartTooltip content={<ChartTooltipContent indicator="line" formatter={(value) => <span className="font-medium tabular-nums">{brl(Number(value))}</span>} />} />
-              <Area dataKey="receita" type="monotone" fill="url(#fillReceita)" stroke="var(--color-receita)" strokeWidth={2} />
-            </AreaChart>
-          </ChartContainer>
-        </div>
-        <div className="border border-[#e5ddd4] bg-white p-5 shadow-[0_1px_0_rgba(61,20,24,0.04)] lg:col-span-2">
-          <h2 className="font-display text-xl text-wine">Status dos pedidos</h2>
-          <p className="mb-2 text-xs text-muted-foreground">Funil atual</p>
-          <ChartContainer config={statusConfig} className="mx-auto aspect-square max-h-[240px]">
-            <PieChart>
-              <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
-              <Pie data={byStatus} dataKey="value" nameKey="name" innerRadius={52} outerRadius={84} paddingAngle={3}>
-                {byStatus.map((s) => (
-                  <Cell key={s.name} fill={s.fill} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ChartContainer>
-          <ul className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            {byStatus.map((s) => (
-              <li key={s.name} className="flex items-center gap-2">
-                <span className="h-2 w-2 shrink-0" style={{ background: s.fill }} />
-                {s.name}: <strong>{s.value}</strong>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="border border-[#e5ddd4] bg-white p-5 shadow-[0_1px_0_rgba(61,20,24,0.04)]">
-          <h2 className="font-display text-xl text-wine">Estoque por categoria</h2>
-          <p className="mb-4 text-xs text-muted-foreground">Unidades no catálogo</p>
-          <ChartContainer config={{ estoque: { label: "Estoque", color: "oklch(0.45 0.06 20)" } }} className="aspect-[16/9] w-full">
-            <BarChart data={categoryBars} margin={{ left: 0, right: 8 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="cat" tickLine={false} axisLine={false} tickMargin={8} />
-              <YAxis tickLine={false} axisLine={false} width={28} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="estoque" fill="var(--color-estoque)" radius={0} />
-            </BarChart>
-          </ChartContainer>
-        </div>
-        <div className="border border-[#e5ddd4] bg-white p-5 shadow-[0_1px_0_rgba(61,20,24,0.04)]">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-xl text-wine">Pedidos recentes</h2>
-              <p className="text-xs text-muted-foreground">Últimas movimentações</p>
-            </div>
-            <button type="button" onClick={onGoOrders} className="text-xs text-wine hover:underline">
-              Ver todos
-            </button>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="text-left text-[11px] text-muted-foreground">
-              <tr>
-                <th className="pb-2 font-medium">Pedido</th>
-                <th className="pb-2 font-medium">Cliente</th>
-                <th className="pb-2 font-medium">Total</th>
-                <th className="pb-2 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.slice(0, 6).map((o) => (
-                <tr key={o.id} className="border-t border-[#eee7e0]">
-                  <td className="py-2.5 font-medium">{o.id}</td>
-                  <td className="py-2.5">{o.customer}</td>
-                  <td className="py-2.5">{brl(o.total)}</td>
-                  <td className="py-2.5">
-                    <StatusPill status={o.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {lowStock.length > 0 && (
-            <div className="mt-4 flex gap-2 border border-wine/15 bg-blush/70 p-3 text-xs text-wine">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <div>
-                <p className="font-medium">Atenção ao estoque</p>
-                <p className="mt-0.5 text-wine/80">{lowStock.map((p) => `${p.name} (${p.stock})`).join(" · ")}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: Order["status"] }) {
-  const styles: Record<Order["status"], string> = {
-    "Aguardando pagamento": "bg-amber-100 text-amber-900",
-    Pago: "bg-wine/10 text-wine",
-    Enviado: "bg-sky-100 text-sky-900",
-    Entregue: "bg-emerald-100 text-emerald-900",
-  };
-  return <span className={`inline-block px-2 py-0.5 text-[10px] tracking-wide ${styles[status]}`}>{status}</span>;
 }
 
 function PlacementToggle({
@@ -417,10 +296,10 @@ function PlacementToggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-3 border border-[#eee7e0] bg-[#faf7f4]/70 px-3 py-2.5">
+    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50/70 px-3 py-2.5">
       <span>
-        <span className="block text-xs font-medium text-wine">{label}</span>
-        <span className="block text-[10px] text-muted-foreground">{hint}</span>
+        <span className="block text-sm font-medium text-zinc-800">{label}</span>
+        <span className="block text-[11px] text-zinc-500">{hint}</span>
       </span>
       <Switch checked={checked} onCheckedChange={onChange} />
     </label>
@@ -431,8 +310,11 @@ function Products() {
   const [products, setProducts] = useProducts();
   const [catalog, setCatalog] = useCatalog();
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | Product["status"]>("todos");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [showCats, setShowCats] = useState(false);
   const [newSub, setNewSub] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<string[]>([]);
 
   const upd = (id: string, patch: Partial<Product>) => setProducts(products.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 
@@ -460,16 +342,14 @@ function Products() {
       },
     ]);
     setOpenId(id);
-    toast.success("Produto criado — defina vitrine e subcategoria");
+    toast.success("Produto criado");
   };
 
   const addSubcategory = (catName: string) => {
     const name = (newSub[catName] ?? "").trim();
     if (!name) return;
     setCatalog(
-      catalog.map((c) =>
-        c.name === catName && !c.subcategories.includes(name) ? { ...c, subcategories: [...c.subcategories, name] } : c,
-      ),
+      catalog.map((c) => (c.name === catName && !c.subcategories.includes(name) ? { ...c, subcategories: [...c.subcategories, name] } : c)),
     );
     setNewSub((s) => ({ ...s, [catName]: "" }));
     toast.success(`Subcategoria “${name}” criada`);
@@ -480,269 +360,609 @@ function Products() {
     setProducts(products.map((p) => (p.category === catName && p.subcategory === sub ? { ...p, subcategory: "" } : p)));
   };
 
-  const list = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
+  const list = products.filter((p) => {
+    const matchQ = p.name.toLowerCase().includes(q.toLowerCase()) || (p.sku ?? "").toLowerCase().includes(q.toLowerCase());
+    const matchStatus = statusFilter === "todos" || p.status === statusFilter;
+    return matchQ && matchStatus;
+  });
+
+  const openProduct = products.find((p) => p.id === openId) ?? null;
   const subsOf = (cat: string) => catalog.find((c) => c.name === cat)?.subcategories ?? [];
 
   return (
-    <div className="space-y-5">
-      <div className="border border-[#e5ddd4] bg-white p-5">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl text-wine">Categorias & subcategorias</h2>
-            <p className="text-xs text-muted-foreground">Crie subcategorias para organizar o catálogo da loja.</p>
+    <div>
+      <PageHeader
+        title="Produtos"
+        subtitle={`${products.length} itens no catálogo`}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => exportProductsCsv(products)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              <Download className="h-3.5 w-3.5" /> Exportar
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCats((v) => !v)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              <Filter className="h-3.5 w-3.5" /> Categorias
+            </button>
+            <button type="button" onClick={add} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-wine px-3 text-xs font-medium text-ivory hover:bg-wine-deep">
+              <Plus className="h-3.5 w-3.5" /> Novo produto
+            </button>
           </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {catalog.map((c: CatalogCategory) => (
-            <div key={c.name} className="border border-[#eee7e0] p-4">
-              <div className="mb-3 flex items-center gap-3">
-                <img src={c.image} alt="" className="h-12 w-9 object-cover object-top" />
-                <div>
-                  <p className="font-medium text-wine">{c.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{c.subcategories.length} subcategorias</p>
-                </div>
-              </div>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {c.subcategories.length === 0 && <span className="text-xs text-muted-foreground">Nenhuma ainda</span>}
-                {c.subcategories.map((sub) => (
-                  <span key={sub} className="inline-flex items-center gap-1 border border-wine/15 bg-blush/50 px-2 py-1 text-[11px] text-wine">
-                    {sub}
-                    <button type="button" aria-label={`Remover ${sub}`} className="opacity-50 hover:opacity-100" onClick={() => removeSubcategory(c.name, sub)}>
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  className={fieldClass}
-                  placeholder="Nova subcategoria…"
-                  value={newSub[c.name] ?? ""}
-                  onChange={(e) => setNewSub((s) => ({ ...s, [c.name]: e.target.value }))}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSubcategory(c.name))}
-                />
-                <button type="button" onClick={() => addSubcategory(c.name)} className="h-11 shrink-0 bg-wine px-3 text-xs tracking-wider text-ivory uppercase">
-                  Add
-                </button>
-              </div>
+        }
+      />
+
+      {showCats && (
+        <Panel className="mb-5 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900">Categorias e subcategorias</h2>
+              <p className="text-xs text-zinc-500">Organize o catálogo da loja</p>
             </div>
-          ))}
-        </div>
-      </div>
+            <button type="button" onClick={() => setShowCats(false)} className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {catalog.map((c: CatalogCategory) => (
+              <div key={c.name} className="rounded-lg border border-zinc-200 p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <img src={c.image} alt="" className="h-12 w-9 rounded object-cover object-top" />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900">{c.name}</p>
+                    <p className="text-[11px] text-zinc-500">{c.subcategories.length} subcategorias</p>
+                  </div>
+                </div>
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {c.subcategories.length === 0 && <span className="text-xs text-zinc-400">Nenhuma ainda</span>}
+                  {c.subcategories.map((sub) => (
+                    <span key={sub} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] text-zinc-700">
+                      {sub}
+                      <button type="button" aria-label={`Remover ${sub}`} className="text-zinc-400 hover:text-zinc-700" onClick={() => removeSubcategory(c.name, sub)}>
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    className={field}
+                    placeholder="Nova subcategoria…"
+                    value={newSub[c.name] ?? ""}
+                    onChange={(e) => setNewSub((s) => ({ ...s, [c.name]: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSubcategory(c.name))}
+                  />
+                  <button type="button" onClick={() => addSubcategory(c.name)} className="h-10 shrink-0 rounded-md bg-zinc-900 px-3 text-xs font-medium text-white hover:bg-zinc-800">
+                    Adicionar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border border-[#e5ddd4] bg-white p-4">
-        <div className="relative max-w-sm flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input placeholder="Buscar no catálogo…" value={q} onChange={(e) => setQ(e.target.value)} className={fieldClass + " pl-9"} />
+      <Panel className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-zinc-100 px-4 py-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <input placeholder="Buscar por nome ou SKU…" value={q} onChange={(e) => setQ(e.target.value)} className={`${field} pl-9`} />
+          </div>
+          <div className="flex rounded-md border border-zinc-200 bg-zinc-50 p-0.5">
+            {(
+              [
+                ["todos", "Todos"],
+                ["publicado", "Publicados"],
+                ["rascunho", "Rascunhos"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setStatusFilter(id)}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition ${statusFilter === id ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-800"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-zinc-500">{list.length} resultado{list.length === 1 ? "" : "s"}</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">{list.length} produtos</span>
-          <button type="button" onClick={add} className="inline-flex h-11 items-center gap-2 bg-wine px-4 text-xs tracking-wider text-ivory uppercase">
-            <Plus className="h-4 w-4" /> Novo produto
-          </button>
-        </div>
-      </div>
 
-      <div className="space-y-3">
-        {list.map((p) => {
-          const open = openId === p.id;
-          const subs = subsOf(p.category);
-          return (
-            <div key={p.id} className="border border-[#e5ddd4] bg-white">
-              <div className="flex flex-wrap items-center gap-3 p-3 md:p-4">
-                <img src={p.image} alt="" className="h-16 w-12 object-cover object-[78%_0%]" />
-                <div className="min-w-[180px] flex-1">
-                  <input className={fieldClass} value={p.name} onChange={(e) => upd(p.id, { name: e.target.value })} />
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+        {selected.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-wine/10 bg-wine/[0.03] px-4 py-2.5">
+            <span className="text-xs font-medium text-wine">{selected.length} selecionado{selected.length > 1 ? "s" : ""}</span>
+            <button
+              type="button"
+              className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+              onClick={() => {
+                setProducts(products.map((p) => (selected.includes(p.id) ? { ...p, status: "publicado" } : p)));
+                toast.success("Produtos publicados");
+                setSelected([]);
+              }}
+            >
+              Publicar
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+              onClick={() => {
+                setProducts(products.map((p) => (selected.includes(p.id) ? { ...p, status: "rascunho" } : p)));
+                toast.success("Movidos para rascunho");
+                setSelected([]);
+              }}
+            >
+              Rascunho
+            </button>
+            <button type="button" className="text-xs text-zinc-500 hover:underline" onClick={() => setSelected([])}>
+              Limpar
+            </button>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-zinc-50 text-left text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+              <tr>
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={list.length > 0 && list.every((p) => selected.includes(p.id))}
+                    onChange={(e) => setSelected(e.target.checked ? list.map((p) => p.id) : [])}
+                    aria-label="Selecionar todos"
+                  />
+                </th>
+                <th className="px-3 py-3">Produto</th>
+                <th className="px-3 py-3">Categoria</th>
+                <th className="px-3 py-3">Preço</th>
+                <th className="px-3 py-3">Estoque</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((p) => (
+                <tr key={p.id} className={`border-t border-zinc-100 transition hover:bg-zinc-50/80 ${openId === p.id ? "bg-wine/[0.03]" : ""}`}>
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(p.id)}
+                      onChange={(e) => setSelected((prev) => (e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)))}
+                      aria-label={`Selecionar ${p.name}`}
+                    />
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-3">
+                      <img src={p.image} alt="" className="h-12 w-9 rounded object-cover object-[78%_0%]" />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-zinc-900">{p.name}</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {p.showInVitrine !== false && <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-600">Vitrine</span>}
+                          {p.featured && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800">Destaque</span>}
+                          {p.isNew && <span className="rounded bg-wine/10 px-1.5 py-0.5 text-[10px] text-wine">Novo</span>}
+                          {p.best && <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-800">Mais vendido</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-zinc-600">
                     {p.category}
-                    {p.subcategory ? ` · ${p.subcategory}` : ""}
-                  </p>
+                    {p.subcategory ? <span className="block text-[11px] text-zinc-400">{p.subcategory}</span> : null}
+                  </td>
+                  <td className="px-3 py-3 tabular-nums">
+                    {p.promo != null ? (
+                      <span>
+                        <span className="font-medium text-zinc-900">{brl(p.promo)}</span>
+                        <span className="ml-1 text-[11px] text-zinc-400 line-through">{brl(p.price)}</span>
+                      </span>
+                    ) : (
+                      <span className="font-medium">{brl(p.price)}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className={`tabular-nums ${p.stock <= 5 ? "font-medium text-amber-700" : "text-zinc-700"}`}>{p.stock}</span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <ProductStatusBadge status={p.status} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(openId === p.id ? null : p.id)}
+                      className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-white"
+                    >
+                      {openId === p.id ? "Fechar" : "Editar"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {list.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-16 text-center text-sm text-zinc-500">
+                    Nenhum produto encontrado
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      {openProduct && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <button type="button" aria-label="Fechar editor" className="absolute inset-0 bg-black/40" onClick={() => setOpenId(null)} />
+          <div className="relative flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-zinc-500">Editar produto</p>
+                <h2 className="truncate text-base font-semibold text-zinc-900">{openProduct.name}</h2>
+              </div>
+              <button type="button" onClick={() => setOpenId(null)} className="rounded-md p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-6 overflow-y-auto p-5">
+              <div className="flex gap-4">
+                <img src={openProduct.image} alt="" className="h-24 w-16 rounded-lg object-cover object-[78%_0%]" />
+                <div className="min-w-0 flex-1 space-y-3">
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Nome
+                    <input className={`${field} mt-1.5`} value={openProduct.name} onChange={(e) => upd(openProduct.id, { name: e.target.value })} />
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block text-xs font-medium text-zinc-600">
+                      Status
+                      <select className={`${field} mt-1.5`} value={openProduct.status} onChange={(e) => upd(openProduct.id, { status: e.target.value as Product["status"] })}>
+                        <option value="publicado">Publicado</option>
+                        <option value="rascunho">Rascunho</option>
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-zinc-600">
+                      SKU
+                      <input className={`${field} mt-1.5`} value={openProduct.sku ?? ""} onChange={(e) => upd(openProduct.id, { sku: e.target.value })} placeholder="Opcional" />
+                    </label>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {p.showInVitrine !== false && <span className="bg-wine/10 px-2 py-0.5 text-[10px] text-wine">Vitrine</span>}
-                  {p.featured && <span className="bg-champagne/40 px-2 py-0.5 text-[10px] text-wine-deep">Destaque</span>}
-                  {p.isNew && <span className="bg-wine px-2 py-0.5 text-[10px] text-ivory">Novo</span>}
-                  {p.best && <span className="bg-blush px-2 py-0.5 text-[10px] text-wine">Mais vendido</span>}
+              </div>
+
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Classificação</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Categoria
+                    <select
+                      className={`${field} mt-1.5`}
+                      value={openProduct.category}
+                      onChange={(e) => {
+                        const c = catalog.find((x) => x.name === e.target.value)!;
+                        upd(openProduct.id, { category: c.name, image: c.image, subcategory: c.subcategories[0] ?? "" });
+                      }}
+                    >
+                      {catalog.map((c) => (
+                        <option key={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Subcategoria
+                    <select className={`${field} mt-1.5`} value={openProduct.subcategory ?? ""} onChange={(e) => upd(openProduct.id, { subcategory: e.target.value })}>
+                      <option value="">Sem subcategoria</option>
+                      {subsOf(openProduct.category).map((sub) => (
+                        <option key={sub} value={sub}>
+                          {sub}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-                <select className={fieldClass + " w-28"} value={p.status} onChange={(e) => upd(p.id, { status: e.target.value as Product["status"] })}>
-                  <option>publicado</option>
-                  <option>rascunho</option>
-                </select>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Preço e estoque</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Preço
+                    <input type="number" className={`${field} mt-1.5`} value={openProduct.price} onChange={(e) => upd(openProduct.id, { price: +e.target.value })} />
+                  </label>
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Promo
+                    <input
+                      type="number"
+                      className={`${field} mt-1.5`}
+                      value={openProduct.promo ?? ""}
+                      onChange={(e) => upd(openProduct.id, { promo: e.target.value ? +e.target.value : undefined })}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Estoque
+                    <input type="number" className={`${field} mt-1.5`} value={openProduct.stock} onChange={(e) => upd(openProduct.id, { stock: +e.target.value })} />
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Cor
+                    <input className={`${field} mt-1.5`} value={openProduct.color ?? ""} onChange={(e) => upd(openProduct.id, { color: e.target.value })} />
+                  </label>
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Tamanhos
+                    <input
+                      className={`${field} mt-1.5`}
+                      value={openProduct.sizes.join(", ")}
+                      onChange={(e) =>
+                        upd(openProduct.id, {
+                          sizes: e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        })
+                      }
+                      placeholder="PP, P, M, G"
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Descrição</h3>
+                <textarea className={area} value={openProduct.description} onChange={(e) => upd(openProduct.id, { description: e.target.value })} placeholder="Descrição do produto na loja" />
+                <textarea className={area} value={openProduct.composition ?? ""} onChange={(e) => upd(openProduct.id, { composition: e.target.value })} placeholder="Composição" />
+                <textarea className={area} value={openProduct.care ?? ""} onChange={(e) => upd(openProduct.id, { care: e.target.value })} placeholder="Cuidados com a peça" />
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Onde aparece na loja</h3>
+                <PlacementToggle label="Vitrine da home" hint="Grade principal de produtos" checked={openProduct.showInVitrine !== false} onChange={(v) => upd(openProduct.id, { showInVitrine: v })} />
+                <PlacementToggle label="Destaques" hint="Filtro e selo de destaque" checked={!!openProduct.featured} onChange={(v) => upd(openProduct.id, { featured: v })} />
+                <PlacementToggle label="Novidades" hint="Badge NOVO + filtro" checked={!!openProduct.isNew} onChange={(v) => upd(openProduct.id, { isNew: v })} />
+                <PlacementToggle label="Mais vendidos" hint="Badge + filtro" checked={!!openProduct.best} onChange={(v) => upd(openProduct.id, { best: v })} />
+              </section>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t border-zinc-200 px-5 py-3">
+              <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setOpenId(open ? null : p.id)}
-                  className="h-11 border border-wine/20 px-3 text-xs tracking-wider text-wine uppercase hover:bg-blush"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-200 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                  onClick={() => {
+                    setProducts([
+                      ...products,
+                      { ...openProduct, id: String(Date.now()), slug: openProduct.slug + "-copia", name: openProduct.name + " (cópia)", status: "rascunho" },
+                    ]);
+                    toast.success("Produto duplicado");
+                  }}
                 >
-                  {open ? "Fechar" : "Editar"}
+                  <Copy className="h-3.5 w-3.5" /> Duplicar
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-red-200 px-3 text-xs font-medium text-red-600 hover:bg-red-50"
+                  onClick={() => {
+                    if (confirm("Excluir produto?")) {
+                      setProducts(products.filter((x) => x.id !== openProduct.id));
+                      setOpenId(null);
+                      toast.message("Produto removido");
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir
                 </button>
               </div>
-
-              {open && (
-                <div className="border-t border-[#eee7e0] bg-[#faf7f4]/40 p-4 md:p-5">
-                  <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-                    <div className="space-y-3">
-                      <p className="text-[11px] tracking-[0.2em] text-wine/70 uppercase">Classificação</p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
-                          Categoria
-                          <select
-                            className={fieldClass + " mt-1.5"}
-                            value={p.category}
-                            onChange={(e) => {
-                              const c = catalog.find((x) => x.name === e.target.value)!;
-                              upd(p.id, { category: c.name, image: c.image, subcategory: c.subcategories[0] ?? "" });
-                            }}
-                          >
-                            {catalog.map((c) => (
-                              <option key={c.name}>{c.name}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
-                          Subcategoria
-                          <select
-                            className={fieldClass + " mt-1.5"}
-                            value={p.subcategory ?? ""}
-                            onChange={(e) => upd(p.id, { subcategory: e.target.value })}
-                          >
-                            <option value="">Sem subcategoria</option>
-                            {subs.map((sub) => (
-                              <option key={sub} value={sub}>
-                                {sub}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
-                          Preço
-                          <input type="number" className={fieldClass + " mt-1.5"} value={p.price} onChange={(e) => upd(p.id, { price: +e.target.value })} />
-                        </label>
-                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
-                          Promo
-                          <input
-                            type="number"
-                            className={fieldClass + " mt-1.5"}
-                            value={p.promo ?? ""}
-                            onChange={(e) => upd(p.id, { promo: e.target.value ? +e.target.value : undefined })}
-                          />
-                        </label>
-                        <label className="block text-[11px] font-medium tracking-wide text-wine/80 uppercase">
-                          Estoque
-                          <input type="number" className={fieldClass + " mt-1.5"} value={p.stock} onChange={(e) => upd(p.id, { stock: +e.target.value })} />
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <p className="text-[11px] tracking-[0.2em] text-wine/70 uppercase">Onde aparece na loja</p>
-                      <PlacementToggle
-                        label="Vitrine da home"
-                        hint="Grade principal de produtos"
-                        checked={p.showInVitrine !== false}
-                        onChange={(v) => upd(p.id, { showInVitrine: v })}
-                      />
-                      <PlacementToggle label="Destaques" hint="Filtro e selo de destaque" checked={!!p.featured} onChange={(v) => upd(p.id, { featured: v })} />
-                      <PlacementToggle label="Novidades" hint="Badge NOVO + filtro" checked={!!p.isNew} onChange={(v) => upd(p.id, { isNew: v })} />
-                      <PlacementToggle label="Mais vendidos" hint="Badge + filtro" checked={!!p.best} onChange={(v) => upd(p.id, { best: v })} />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-[#eee7e0] pt-4">
-                    <button
-                      type="button"
-                      className="inline-flex h-10 items-center gap-2 border border-wine/20 px-3 text-xs text-wine"
-                      onClick={() => {
-                        setProducts([...products, { ...p, id: String(Date.now()), slug: p.slug + "-copia", name: p.name + " (cópia)", status: "rascunho" }]);
-                        toast.success("Produto duplicado");
-                      }}
-                    >
-                      <Copy className="h-3.5 w-3.5" /> Duplicar
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex h-10 items-center gap-2 border border-destructive/30 px-3 text-xs text-destructive"
-                      onClick={() => {
-                        if (confirm("Excluir produto?")) {
-                          setProducts(products.filter((x) => x.id !== p.id));
-                          setOpenId(null);
-                          toast.message("Produto removido");
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Excluir
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button type="button" onClick={() => setOpenId(null)} className="h-9 rounded-md bg-wine px-4 text-xs font-medium text-ivory hover:bg-wine-deep">
+                Concluir
+              </button>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function Orders() {
   const [orders, setOrders] = useOrders();
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | Order["status"]>("todos");
+  const [openId, setOpenId] = useState<string | null>(null);
   const st: Order["status"][] = ["Aguardando pagamento", "Pago", "Enviado", "Entregue"];
+
+  const list = orders.filter((o) => {
+    const hay = `${o.id} ${o.customer} ${o.email}`.toLowerCase();
+    const matchQ = hay.includes(q.toLowerCase());
+    const matchStatus = statusFilter === "todos" || o.status === statusFilter;
+    return matchQ && matchStatus;
+  });
+
+  const openOrder = orders.find((o) => o.id === openId) ?? null;
+
+  const counts = useMemo(() => {
+    const base = { todos: orders.length } as Record<"todos" | Order["status"], number>;
+    st.forEach((s) => {
+      base[s] = orders.filter((o) => o.status === s).length;
+    });
+    return base;
+  }, [orders]);
+
   return (
-    <div className="overflow-hidden border border-[#e5ddd4] bg-white">
-      <div className="flex items-center justify-between border-b border-[#eee7e0] bg-[#faf7f4] px-5 py-3">
-        <p className="text-sm text-muted-foreground">{orders.length} pedidos no funil</p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-[#faf7f4] text-left text-[11px] tracking-wide text-muted-foreground uppercase">
-            <tr>
-              <th className="px-4 py-3 font-medium">Pedido</th>
-              <th className="px-2 py-3 font-medium">Cliente</th>
-              <th className="px-2 py-3 font-medium">Data</th>
-              <th className="px-2 py-3 font-medium">Pagamento</th>
-              <th className="px-2 py-3 font-medium">Itens</th>
-              <th className="px-2 py-3 font-medium">Total</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id} className="border-t border-[#eee7e0] hover:bg-[#fbfaf8]">
-                <td className="px-4 py-3 font-medium">{o.id}</td>
-                <td className="px-2 py-3">
-                  {o.customer}
-                  <br />
-                  <span className="text-xs text-muted-foreground">{o.email}</span>
-                  {o.city && (
-                    <>
-                      <br />
-                      <span className="text-xs text-muted-foreground">{o.city}</span>
-                    </>
-                  )}
-                </td>
-                <td className="px-2 py-3">{o.date}</td>
-                <td className="px-2 py-3">{o.payment ?? "—"}</td>
-                <td className="px-2 py-3">{o.items}</td>
-                <td className="px-2 py-3 font-medium text-wine">{brl(o.total)}</td>
-                <td className="px-4 py-3">
-                  <select
-                    className={fieldClass}
-                    value={o.status}
-                    onChange={(e) => {
-                      setOrders(orders.map((x) => (x.id === o.id ? { ...x, status: e.target.value as Order["status"] } : x)));
-                      toast.success("Status atualizado");
-                    }}
-                  >
-                    {st.map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </td>
-              </tr>
+    <div>
+      <PageHeader
+        title="Pedidos"
+        subtitle="Acompanhe e atualize o status das vendas"
+        actions={
+          <button
+            type="button"
+            onClick={() => exportOrdersCsv(orders)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          >
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </button>
+        }
+      />
+
+      <Panel className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-zinc-100 px-4 py-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <input placeholder="Buscar pedido, cliente ou e-mail…" value={q} onChange={(e) => setQ(e.target.value)} className={`${field} pl-9`} />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                ["todos", "Todos"],
+                ["Aguardando pagamento", "Aguardando"],
+                ["Pago", "Pago"],
+                ["Enviado", "Enviado"],
+                ["Entregue", "Entregue"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setStatusFilter(id)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  statusFilter === id ? "bg-wine text-ivory" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                }`}
+              >
+                {label}
+                <span className={`tabular-nums ${statusFilter === id ? "text-ivory/70" : "text-zinc-400"}`}>{counts[id]}</span>
+              </button>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
+            <thead className="bg-zinc-50 text-left text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
+              <tr>
+                <th className="px-4 py-3">Pedido</th>
+                <th className="px-3 py-3">Cliente</th>
+                <th className="px-3 py-3">Data</th>
+                <th className="px-3 py-3">Pagamento</th>
+                <th className="px-3 py-3">Itens</th>
+                <th className="px-3 py-3">Total</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-4 py-3 text-right"> </th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((o) => (
+                <tr key={o.id} className="border-t border-zinc-100 hover:bg-zinc-50/80">
+                  <td className="px-4 py-3 font-medium">{o.id}</td>
+                  <td className="px-3 py-3">
+                    <p className="text-zinc-900">{o.customer}</p>
+                    <p className="text-xs text-zinc-500">{o.email}</p>
+                    {o.city && <p className="text-xs text-zinc-400">{o.city}</p>}
+                  </td>
+                  <td className="px-3 py-3 text-zinc-600">{o.date}</td>
+                  <td className="px-3 py-3 text-zinc-600">{o.payment ?? "—"}</td>
+                  <td className="px-3 py-3 tabular-nums text-zinc-600">{o.items}</td>
+                  <td className="px-3 py-3 font-medium tabular-nums text-zinc-900">{brl(o.total)}</td>
+                  <td className="px-3 py-3">
+                    <StatusPill status={o.status} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(o.id)}
+                      className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-white"
+                    >
+                      Detalhes
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {list.length === 0 && (
+                <tr>
+                  <td colSpan={8}>
+                    <EmptyState title="Nenhum pedido encontrado" text="Ajuste os filtros ou aguarde novas vendas na loja." />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Drawer
+        open={!!openOrder}
+        title={openOrder?.id ?? ""}
+        subtitle="Detalhes do pedido"
+        onClose={() => setOpenId(null)}
+        footer={
+          openOrder ? (
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex flex-1 items-center gap-2 text-xs font-medium text-zinc-600">
+                Status
+                <select
+                  className={field}
+                  value={openOrder.status}
+                  onChange={(e) => {
+                    setOrders(orders.map((x) => (x.id === openOrder.id ? { ...x, status: e.target.value as Order["status"] } : x)));
+                    toast.success("Status atualizado");
+                  }}
+                >
+                  {st.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={() => setOpenId(null)} className="h-10 rounded-md bg-wine px-4 text-xs font-medium text-ivory hover:bg-wine-deep">
+                Fechar
+              </button>
+            </div>
+          ) : null
+        }
+      >
+        {openOrder && (
+          <div className="space-y-5 text-sm">
+            <div className="grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-zinc-500">Cliente</p>
+                <p className="font-medium text-zinc-900">{openOrder.customer}</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500">E-mail</p>
+                <p className="text-zinc-800">{openOrder.email}</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500">Telefone</p>
+                <p className="text-zinc-800">{openOrder.phone ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500">Cidade</p>
+                <p className="text-zinc-800">{openOrder.city ?? "—"}</p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-zinc-200 p-4">
+                <p className="text-xs text-zinc-500">Pagamento</p>
+                <p className="mt-1 font-medium">{openOrder.payment ?? "—"}</p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 p-4">
+                <p className="text-xs text-zinc-500">Data</p>
+                <p className="mt-1 font-medium">{openOrder.date}</p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 p-4">
+                <p className="text-xs text-zinc-500">Itens</p>
+                <p className="mt-1 font-medium">{openOrder.items}</p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 p-4">
+                <p className="text-xs text-zinc-500">Total</p>
+                <p className="mt-1 text-lg font-semibold text-wine">{brl(openOrder.total)}</p>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-zinc-500 uppercase">Status atual</p>
+              <StatusPill status={openOrder.status} />
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }
@@ -760,34 +980,6 @@ const appearanceSections = [
 
 type AppearanceSection = (typeof appearanceSections)[number]["id"];
 
-function Field({
-  label,
-  hint,
-  value,
-  onChange,
-  multiline,
-}: {
-  label: string;
-  hint?: string;
-  value: string;
-  onChange: (v: string) => void;
-  multiline?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium tracking-wide text-wine/80 uppercase">{label}</span>
-        {hint && <span className="text-[10px] text-muted-foreground">{hint}</span>}
-      </span>
-      {multiline ? (
-        <textarea className={areaClass} value={value} onChange={(e) => onChange(e.target.value)} />
-      ) : (
-        <input className={fieldClass} value={value} onChange={(e) => onChange(e.target.value)} />
-      )}
-    </label>
-  );
-}
-
 function Appearance() {
   const [s, setS] = useSettings();
   const [section, setSection] = useState<AppearanceSection>("promo");
@@ -799,49 +991,48 @@ function Appearance() {
     window.setTimeout(() => setSavedFlash(false), 900);
   };
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => patch({ ...s, [k]: v });
+  const current = appearanceSections.find((x) => x.id === section)!;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border border-[#e5ddd4] bg-white px-4 py-3">
-        <div>
-          <p className="text-sm font-medium text-wine">Editor de conteúdo da loja</p>
-          <p className="text-xs text-muted-foreground">Altere textos por seção com preview em tempo real.</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {savedFlash ? (
-            <span className="inline-flex items-center gap-1.5 text-emerald-700">
+    <div>
+      <PageHeader
+        title="Aparência"
+        subtitle="Edite os textos e seções da loja"
+        actions={
+          savedFlash ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
               <Check className="h-3.5 w-3.5" /> Salvo
             </span>
           ) : (
-            <span className="text-muted-foreground">Pronto para editar</span>
-          )}
-        </div>
-      </div>
+            <span className="text-xs text-zinc-500">Salvamento automático</span>
+          )
+        }
+      />
 
-      <div className="flex flex-wrap gap-2">
-        {appearanceSections.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setSection(id)}
-            className={`inline-flex items-center gap-2 px-3 py-2 text-xs tracking-wide uppercase transition ${
-              section === id ? "bg-wine text-ivory" : "border border-[#e5ddd4] bg-white text-wine hover:border-wine/40"
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
-            {label}
-          </button>
-        ))}
-      </div>
+      <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+        <Panel className="h-fit overflow-hidden p-2">
+          {appearanceSections.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setSection(id)}
+              className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left text-sm transition ${
+                section === id ? "bg-wine text-ivory" : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+              {label}
+            </button>
+          ))}
+        </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="border border-[#e5ddd4] bg-white p-5 shadow-[0_1px_0_rgba(61,20,24,0.04)] md:p-6">
+        <Panel className="p-5 md:p-6">
           {section === "promo" && (
             <EditorBlock title="Barra promocional" subtitle="Faixa no topo da loja">
-              <div className="flex items-center justify-between border border-[#eee7e0] bg-[#faf7f4] px-4 py-3">
+              <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
                 <div>
-                  <p className="text-sm font-medium text-wine">Exibir barra</p>
-                  <p className="text-xs text-muted-foreground">Liga ou desliga o anúncio no topo</p>
+                  <p className="text-sm font-medium text-zinc-900">Exibir barra</p>
+                  <p className="text-xs text-zinc-500">Liga ou desliga o anúncio no topo</p>
                 </div>
                 <Switch checked={s.promoActive} onCheckedChange={(v) => set("promoActive", v)} />
               </div>
@@ -862,19 +1053,12 @@ function Appearance() {
 
           {section === "slides" && (
             <EditorBlock title="Slides do carrossel" subtitle="Conteúdo dos slides 2 a 5">
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {s.slides.map((slide, idx) => (
-                  <div key={idx} className="border border-[#eee7e0] bg-[#faf7f4]/60 p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <p className="text-[11px] tracking-[0.2em] text-wine uppercase">Slide {idx + 2}</p>
-                      <span className="text-[10px] text-muted-foreground">Carrossel home</span>
-                    </div>
+                  <div key={idx} className="rounded-lg border border-zinc-200 bg-zinc-50/60 p-4">
+                    <p className="mb-3 text-xs font-semibold tracking-wide text-zinc-500 uppercase">Slide {idx + 2}</p>
                     <div className="space-y-3">
-                      <Field
-                        label="Linha superior"
-                        value={slide.kicker}
-                        onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, kicker: v } : sl)))}
-                      />
+                      <Field label="Linha superior" value={slide.kicker} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, kicker: v } : sl)))} />
                       <div className="grid gap-3 sm:grid-cols-2">
                         <Field label="Título" value={slide.title} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, title: v } : sl)))} />
                         <Field label="Destaque" value={slide.accent} onChange={(v) => set("slides", s.slides.map((sl, i) => (i === idx ? { ...sl, accent: v } : sl)))} />
@@ -892,8 +1076,8 @@ function Appearance() {
             <EditorBlock title="Benefícios" subtitle="Faixa abaixo do banner">
               <div className="grid gap-4 sm:grid-cols-2">
                 {s.benefits.map((b, idx) => (
-                  <div key={idx} className="space-y-3 border border-[#eee7e0] p-4">
-                    <p className="text-[11px] tracking-wide text-muted-foreground uppercase">Card {idx + 1}</p>
+                  <div key={idx} className="space-y-3 rounded-lg border border-zinc-200 p-4">
+                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Card {idx + 1}</p>
                     <Field label="Título" value={b.title} onChange={(v) => set("benefits", s.benefits.map((x, i) => (i === idx ? { ...x, title: v } : x)))} />
                     <Field label="Subtítulo" value={b.subtitle} onChange={(v) => set("benefits", s.benefits.map((x, i) => (i === idx ? { ...x, subtitle: v } : x)))} />
                   </div>
@@ -946,19 +1130,22 @@ function Appearance() {
               <Field label="Copyright" value={s.footerCopyright} onChange={(v) => set("footerCopyright", v)} />
             </EditorBlock>
           )}
-        </div>
+        </Panel>
 
         <aside className="xl:sticky xl:top-20 xl:self-start">
-          <div className="overflow-hidden border border-[#e5ddd4] bg-wine-deep text-ivory shadow-[0_12px_40px_rgba(61,20,24,0.18)]">
-            <div className="flex items-center justify-between border-b border-ivory/10 px-4 py-3">
-              <p className="text-[11px] tracking-[0.2em] text-champagne uppercase">Preview ao vivo</p>
-              <Eye className="h-3.5 w-3.5 text-ivory/50" />
+          <Panel className="overflow-hidden bg-[#111113] text-zinc-100">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <div>
+                <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">Preview</p>
+                <p className="text-sm font-medium text-white">{current.label}</p>
+              </div>
+              <Eye className="h-4 w-4 text-zinc-500" />
             </div>
             <div className="p-4">
               <AppearancePreview section={section} s={s} />
             </div>
-          </div>
-          <p className="mt-3 text-center text-[11px] text-muted-foreground">As mudanças já refletem na loja aberta.</p>
+          </Panel>
+          <p className="mt-3 text-center text-[11px] text-zinc-500">As mudanças já refletem na loja aberta.</p>
         </aside>
       </div>
     </div>
@@ -968,9 +1155,9 @@ function Appearance() {
 function EditorBlock({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
     <div className="space-y-5">
-      <div className="border-b border-[#eee7e0] pb-4">
-        <h2 className="font-display text-2xl text-wine">{title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+      <div className="border-b border-zinc-100 pb-4">
+        <h2 className="text-lg font-semibold tracking-tight text-zinc-900">{title}</h2>
+        <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
       </div>
       {children}
     </div>
@@ -981,36 +1168,36 @@ function AppearancePreview({ section, s }: { section: AppearanceSection; s: Sett
   if (section === "promo") {
     return (
       <div className="space-y-3">
-        <p className="text-[10px] text-ivory/40 uppercase">Topo da loja</p>
+        <p className="text-[10px] text-zinc-500 uppercase">Topo da loja</p>
         {s.promoActive ? (
-          <div className="bg-wine px-3 py-2 text-center text-[11px] text-ivory">{s.promoText}</div>
+          <div className="rounded-md bg-wine px-3 py-2 text-center text-[11px] text-ivory">{s.promoText}</div>
         ) : (
-          <p className="text-xs text-ivory/40">Barra desativada</p>
+          <p className="text-xs text-zinc-500">Barra desativada</p>
         )}
       </div>
     );
   }
   if (section === "hero") {
     return (
-      <div className="space-y-3 bg-wine/40 p-4">
-        <p className="text-[10px] tracking-[0.3em] text-ivory/50">{s.heroKicker}</p>
-        <p className="font-display text-2xl leading-tight">
+      <div className="space-y-3 rounded-md bg-wine/40 p-4">
+        <p className="text-[10px] tracking-[0.3em] text-zinc-400">{s.heroKicker}</p>
+        <p className="font-display text-2xl leading-tight text-ivory">
           {s.heroTitle} <em className="text-champagne not-italic">{s.heroAccent}</em>
         </p>
-        <span className="inline-block border border-ivory/40 px-3 py-1.5 text-[10px] tracking-wider uppercase">{s.heroButton}</span>
+        <span className="inline-block border border-ivory/40 px-3 py-1.5 text-[10px] tracking-wider text-ivory uppercase">{s.heroButton}</span>
       </div>
     );
   }
   if (section === "slides") {
     const slide = s.slides[0];
     return (
-      <div className="space-y-2 bg-wine/40 p-4">
-        <p className="text-[10px] tracking-[0.25em] text-ivory/50">{slide?.kicker}</p>
-        <p className="font-display text-xl">
+      <div className="space-y-2 rounded-md bg-wine/40 p-4">
+        <p className="text-[10px] tracking-[0.25em] text-zinc-400">{slide?.kicker}</p>
+        <p className="font-display text-xl text-ivory">
           {slide?.title} <em className="text-champagne not-italic">{slide?.accent}</em>
         </p>
-        <p className="text-xs text-ivory/70">{slide?.text}</p>
-        <span className="inline-block border border-ivory/40 px-3 py-1 text-[10px] uppercase">{slide?.button}</span>
+        <p className="text-xs text-zinc-300">{slide?.text}</p>
+        <span className="inline-block border border-ivory/40 px-3 py-1 text-[10px] text-ivory uppercase">{slide?.button}</span>
       </div>
     );
   }
@@ -1018,9 +1205,9 @@ function AppearancePreview({ section, s }: { section: AppearanceSection; s: Sett
     return (
       <div className="grid gap-2">
         {s.benefits.map((b, i) => (
-          <div key={i} className="border border-ivory/10 bg-wine/30 px-3 py-2">
-            <p className="font-display text-sm">{b.title}</p>
-            <p className="text-[11px] text-ivory/55">{b.subtitle}</p>
+          <div key={i} className="rounded-md border border-white/10 bg-white/5 px-3 py-2">
+            <p className="font-display text-sm text-ivory">{b.title}</p>
+            <p className="text-[11px] text-zinc-400">{b.subtitle}</p>
           </div>
         ))}
       </div>
@@ -1030,33 +1217,33 @@ function AppearancePreview({ section, s }: { section: AppearanceSection; s: Sett
     return (
       <div className="space-y-2 text-center">
         <p className="text-[10px] tracking-[0.3em] text-champagne">{s.collectionsEyebrow}</p>
-        <p className="font-display text-xl">{s.collectionsTitle}</p>
+        <p className="font-display text-xl text-ivory">{s.collectionsTitle}</p>
       </div>
     );
   }
   if (section === "products") {
     return (
       <div className="text-center">
-        <p className="font-display text-xl">{s.productsTitle}</p>
-        <p className="mt-2 text-[11px] text-ivory/50">Grade de produtos da home</p>
+        <p className="font-display text-xl text-ivory">{s.productsTitle}</p>
+        <p className="mt-2 text-[11px] text-zinc-500">Grade de produtos da home</p>
       </div>
     );
   }
   if (section === "editorial") {
     return (
-      <div className="space-y-3 bg-wine/40 p-4">
-        <p className="font-script text-3xl leading-tight">{s.editorialTitle}</p>
-        <p className="text-[10px] tracking-[0.35em] text-ivory/55">{s.editorialKicker}</p>
-        <span className="inline-block border border-ivory/40 px-3 py-1 text-[10px] uppercase">{s.editorialButton}</span>
+      <div className="space-y-3 rounded-md bg-wine/40 p-4">
+        <p className="font-script text-3xl leading-tight text-ivory">{s.editorialTitle}</p>
+        <p className="text-[10px] tracking-[0.35em] text-zinc-400">{s.editorialKicker}</p>
+        <span className="inline-block border border-ivory/40 px-3 py-1 text-[10px] text-ivory uppercase">{s.editorialButton}</span>
       </div>
     );
   }
   return (
     <div className="space-y-3 text-sm">
-      <p className="text-ivory/75">{s.footerAbout}</p>
+      <p className="text-zinc-300">{s.footerAbout}</p>
       <p className="text-xs text-champagne">WhatsApp {s.footerWhatsappLabel}</p>
       <p className="text-xs text-champagne">@{s.footerInstagram.replace(/^@/, "")}</p>
-      <div className="border-t border-ivory/10 pt-3 text-[11px] text-ivory/50">
+      <div className="border-t border-white/10 pt-3 text-[11px] text-zinc-500">
         <p>
           {s.footerPoliciesTitle}: {s.footerPolicy1} · {s.footerPolicy2} · {s.footerPolicy3}
         </p>

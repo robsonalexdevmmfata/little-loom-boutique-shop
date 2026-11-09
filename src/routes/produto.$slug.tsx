@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Check, ChevronDown, CreditCard, Lock, Package, ShieldCheck, ShoppingBag, Sparkles, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/StoreLayout";
-import { brl, FREE_SHIPPING_FROM, useCart, useProducts } from "@/lib/store";
+import { brl, getFreeShippingFrom, useCart, useProducts } from "@/lib/store";
 
 export const Route = createFileRoute("/produto/$slug")({
   head: ({ params }) => ({
@@ -64,6 +64,7 @@ function ProductPage() {
   const pixPrice = final * 0.95;
   const lowStock = p.stock > 0 && p.stock <= 5;
   const activePhoto = gallery[photo] ?? p.image;
+  const freeFrom = getFreeShippingFrom();
 
   const add = (goCheckout: boolean) => {
     if (!size) {
@@ -122,7 +123,7 @@ function ProductPage() {
       title: "Frete, troca e pagamento",
       body: (
         <ul className="space-y-2 text-sm text-foreground/80">
-          <li>Frete grátis a partir de {brl(FREE_SHIPPING_FROM)} · envio com rastreio</li>
+          <li>Frete grátis a partir de {brl(freeFrom)} · envio com rastreio</li>
           <li>Troca em até 7 dias após o recebimento</li>
           <li>PIX com 5% off · cartão em até 12x sem juros · boleto</li>
           <li>Embalagem discreta e premium REIS NOIR</li>
@@ -288,7 +289,7 @@ function ProductPage() {
           <div className="mt-8 grid gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:grid-cols-2">
             <p className="flex items-start gap-2">
               <Truck className="mt-0.5 h-4 w-4 shrink-0 text-wine" />
-              Frete grátis a partir de {brl(FREE_SHIPPING_FROM)}
+              Frete grátis a partir de {brl(freeFrom)}
             </p>
             <p className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-wine" />

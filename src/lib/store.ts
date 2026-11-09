@@ -504,7 +504,7 @@ const seedOrders: Order[] = [
   { id: "RN-1037", customer: "Helena Castro", email: "helena@email.com", total: 699.9, status: "Entregue", date: daysAgo(8), items: 1, payment: "Cartão", city: "Florianópolis" },
 ];
 
-const seedSettings: Settings = {
+export const seedSettings: Settings = {
   promoText: "Primeira compra? Ganhe 10% OFF com o cupom BEMVINDA",
   promoActive: true,
   heroKicker: "REIS NOIR",
@@ -595,17 +595,90 @@ function useLS<T>(key: string, seed: T) {
 }
 
 /** v5: subcategorias + vitrine/destaques/novidades/mais vendidos. */
+export type Coupon = {
+  id: string;
+  code: string;
+  type: "percent" | "fixed";
+  value: number;
+  active: boolean;
+  minOrder: number;
+  note?: string;
+};
+
+export type CommerceConfig = {
+  storeName: string;
+  storeUrlLabel: string;
+  freeShippingFrom: number;
+  flatShipping: number;
+  supportEmail: string;
+  lowStockThreshold: number;
+};
+
+export const seedCoupons: Coupon[] = [
+  {
+    id: "c1",
+    code: "BEMVINDA",
+    type: "percent",
+    value: 10,
+    active: true,
+    minOrder: 0,
+    note: "Primeira compra",
+  },
+];
+
+export const seedCommerce: CommerceConfig = {
+  storeName: "REIS NOIR",
+  storeUrlLabel: "reisnoir",
+  freeShippingFrom: 500,
+  flatShipping: 29.9,
+  supportEmail: "contato@reisnoir.com.br",
+  lowStockThreshold: 5,
+};
+
 export const useProducts = () => useLS("rn-products-v5", seedProducts);
 export const useCatalog = () => useLS("rn-catalog-v1", seedCatalog);
 export const useOrders = () => useLS("rn-orders-v3", seedOrders);
 export const useSettings = () => useLS("rn-settings-v2", seedSettings);
 export const useCart = () => useLS<CartItem[]>("rn-cart", []);
+export const useCoupons = () => useLS("rn-coupons-v1", seedCoupons);
+export const useCommerce = () => useLS("rn-commerce-v1", seedCommerce);
 
 export const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export const ADMIN_PASSWORD = "1234";
-export const FREE_SHIPPING_FROM = 500;
-export const COUPON_CODE = "BEMVINDA";
-export const COUPON_RATE = 0.1;
+
+function readJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw) as T;
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
+
+/** Compatível com PDPs e sacola — lê a config persistida. */
+export const FREE_SHIPPING_FROM = seedCommerce.freeShippingFrom;
+export const COUPON_CODE = seedCoupons[0]?.code ?? "BEMVINDA";
+export const COUPON_RATE = (seedCoupons[0]?.value ?? 10) / 100;
+
+export function getFreeShippingFrom() {
+  return readJson("rn-commerce-v1", seedCommerce).freeShippingFrom;
+}
+
+export function getFlatShipping() {
+  return readJson("rn-commerce-v1", seedCommerce).flatShipping;
+}
+
+export function getActiveCoupons() {
+  return readJson("rn-coupons-v1", seedCoupons).filter((c) => c.active);
+}
+
+export function findCoupon(code: string) {
+  const normalized = code.trim().toUpperCase();
+  if (!normalized) return null;
+  return getActiveCoupons().find((c) => c.code.toUpperCase() === normalized) ?? null;
+}
 
 export type CartLine = CartItem & { p: Product };
 
@@ -617,16 +690,22 @@ export function resolveCartLines(cart: CartItem[], products: Product[]): CartLin
 
 export function calcCartTotals(lines: CartLine[], coupon: string, shippingOverride?: number | null) {
   const subtotal = lines.reduce((a, l) => a + (l.p.promo ?? l.p.price) * l.qty, 0);
-  const discount = coupon.trim().toUpperCase() === COUPON_CODE ? subtotal * COUPON_RATE : 0;
+  const match = findCoupon(coupon);
+  let discount = 0;
+  if (match && subtotal >= (match.minOrder || 0)) {
+    discount = match.type === "percent" ? subtotal * (match.value / 100) : Math.min(subtotal, match.value);
+  }
+  const freeFrom = getFreeShippingFrom();
+  const flat = getFlatShipping();
   const shipping =
     shippingOverride != null
       ? Math.max(0, shippingOverride)
-      : subtotal > 0 && subtotal - discount < FREE_SHIPPING_FROM
-        ? 29.9
+      : subtotal > 0 && subtotal - discount < freeFrom
+        ? flat
         : 0;
   const total = Math.max(0, subtotal - discount + shipping);
   const items = lines.reduce((a, l) => a + l.qty, 0);
-  return { subtotal, discount, shipping, total, items };
+  return { subtotal, discount, shipping, total, items, appliedCoupon: match };
 }
 
 export function nextOrderId(orders: Order[]) {

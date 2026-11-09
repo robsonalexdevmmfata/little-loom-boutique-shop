@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ShoppingBag, Trash2 } from "lucide-react";
 import { StoreLayout } from "@/components/StoreLayout";
-import { brl, calcCartTotals, COUPON_CODE, FREE_SHIPPING_FROM, resolveCartLines, useCart, useProducts } from "@/lib/store";
+import { brl, calcCartTotals, getFreeShippingFrom, resolveCartLines, useCart, useCoupons, useProducts } from "@/lib/store";
 import { useState } from "react";
 
 export const Route = createFileRoute("/sacola")({
@@ -21,10 +21,13 @@ export const Route = createFileRoute("/sacola")({
 function Cart() {
   const [cart, setCart] = useCart();
   const [products] = useProducts();
+  const [coupons] = useCoupons();
   const [coupon, setCoupon] = useState("");
   const lines = resolveCartLines(cart, products);
-  const { subtotal, discount, shipping, total } = calcCartTotals(lines, coupon);
-  const toFree = Math.max(0, FREE_SHIPPING_FROM - (subtotal - discount));
+  const { subtotal, discount, shipping, total, appliedCoupon } = calcCartTotals(lines, coupon);
+  const freeFrom = getFreeShippingFrom();
+  const toFree = Math.max(0, freeFrom - (subtotal - discount));
+  const exampleCoupon = coupons.find((c) => c.active)?.code ?? "CUPOM";
 
   return (
     <StoreLayout>
@@ -83,7 +86,7 @@ function Cart() {
                 <div>
                   <p className="text-xs text-muted-foreground">Faltam {brl(toFree)} para frete grátis</p>
                   <div className="mt-2 h-1.5 overflow-hidden bg-wine/10">
-                    <div className="h-full bg-wine transition-all" style={{ width: `${Math.min(100, ((subtotal - discount) / FREE_SHIPPING_FROM) * 100)}%` }} />
+                    <div className="h-full bg-wine transition-all" style={{ width: `${Math.min(100, ((subtotal - discount) / freeFrom) * 100)}%` }} />
                   </div>
                 </div>
               ) : (
@@ -91,13 +94,18 @@ function Cart() {
               )}
               <div className="flex gap-2">
                 <input
-                  placeholder={`Cupom (ex: ${COUPON_CODE})`}
+                  placeholder={`Cupom (ex: ${exampleCoupon})`}
                   value={coupon}
                   onChange={(e) => setCoupon(e.target.value)}
                   className="h-10 flex-1 border border-border bg-background px-3 text-sm"
                 />
               </div>
-              {discount > 0 && <p className="text-xs text-wine">Cupom {COUPON_CODE} aplicado (−10%)</p>}
+              {discount > 0 && appliedCoupon && (
+                <p className="text-xs text-wine">
+                  Cupom {appliedCoupon.code} aplicado (−
+                  {appliedCoupon.type === "percent" ? `${appliedCoupon.value}%` : brl(appliedCoupon.value)})
+                </p>
+              )}
               <div className="space-y-2 border-t border-wine/15 pt-3">
                 <div className="flex justify-between"><span>Subtotal</span><span>{brl(subtotal)}</span></div>
                 {discount > 0 && (
