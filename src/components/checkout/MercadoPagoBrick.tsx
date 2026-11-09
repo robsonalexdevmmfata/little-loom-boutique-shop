@@ -22,15 +22,7 @@ export function MercadoPagoBrick({ amount, publicKey, orderId, email, name, desc
     setReady(true);
   }, [publicKey]);
 
-  if (!publicKey) {
-    return (
-      <div className="border border-wine/20 bg-blush/50 p-4 text-sm text-wine">
-        Configure <code className="text-xs">VITE_MP_PUBLIC_KEY</code> e <code className="text-xs">MP_ACCESS_TOKEN</code> nas secrets para ativar o checkout transparente.
-      </div>
-    );
-  }
-
-  if (!ready || amount <= 0) {
+  if (!publicKey || !ready || amount <= 0) {
     return <p className="text-sm text-muted-foreground">Carregando pagamento seguro…</p>;
   }
 

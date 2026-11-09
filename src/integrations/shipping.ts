@@ -1,4 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import {
+  STORE_MELHOR_ENVIO_CLIENT_ID,
+  STORE_MELHOR_ENVIO_CLIENT_SECRET,
+  STORE_MELHOR_ENVIO_FROM_CEP,
+} from "@/integrations/store-credentials";
 
 export type ShippingQuote = {
   id: string;
@@ -61,7 +66,7 @@ async function quoteMelhorEnvio(cep: string, value: number, qty: number): Promis
   const token = process.env.MELHOR_ENVIO_TOKEN?.trim();
   if (!token) return null;
 
-  const from = onlyDigits(process.env.MELHOR_ENVIO_FROM_CEP || "01310100");
+  const from = onlyDigits(process.env.MELHOR_ENVIO_FROM_CEP || STORE_MELHOR_ENVIO_FROM_CEP);
   const to = onlyDigits(cep);
   if (to.length !== 8) throw new Error("CEP inválido");
 

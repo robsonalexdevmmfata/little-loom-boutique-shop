@@ -6,6 +6,7 @@ import { StoreLayout } from "@/components/StoreLayout";
 import { brl, calcCartTotals, nextOrderId, resolveCartLines, useCart, useOrders, useProducts } from "@/lib/store";
 import { quoteShipping, type ShippingQuote } from "@/integrations/shipping";
 import { getMpPublicKey } from "@/integrations/mercado-pago";
+import { STORE_MP_PUBLIC_KEY } from "@/integrations/store-credentials";
 
 const MercadoPagoBrick = lazy(() =>
   import("@/components/checkout/MercadoPagoBrick").then((m) => ({ default: m.MercadoPagoBrick })),
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
       { title: "Checkout — REIS NOIR" },
-      { name: "description", content: "Checkout transparente REIS NOIR com Mercado Pago e frete Melhor Envio." },
+      { name: "description", content: "Finalize seu pedido na REIS NOIR com pagamento seguro." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -46,7 +47,6 @@ function Checkout() {
   const [uf, setUf] = useState("SP");
   const [complement, setComplement] = useState("");
   const [quotes, setQuotes] = useState<ShippingQuote[]>([]);
-  const [quoteProvider, setQuoteProvider] = useState<"melhor-envio" | "estimate" | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [shippingId, setShippingId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -78,10 +78,8 @@ function Checkout() {
     try {
       const res = await quoteShipping({ data: { cep: digits, value: Math.max(0, subtotal - discount), qty: items || 1 } });
       setQuotes(res.quotes);
-      setQuoteProvider(res.provider);
       setShippingId(res.quotes[0]?.id ?? null);
-      if (res.provider === "melhor-envio") toast.success("Fretes Melhor Envio carregados");
-      else toast.message("Cotação estimada — conecte o token Melhor Envio para cotações ao vivo");
+      toast.success("Fretes calculados");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao cotar frete");
     } finally {
@@ -185,7 +183,7 @@ function Checkout() {
           </div>
         </div>
         <p className="mt-4 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <Lock className="h-3 w-3" /> Pagamento seguro Mercado Pago · frete Melhor Envio
+          <Lock className="h-3 w-3" /> Pagamento seguro · dados protegidos
         </p>
       </aside>
     ),
@@ -265,8 +263,8 @@ function Checkout() {
               <Crown className="h-5 w-5" strokeWidth={1.2} />
               <span className="font-display text-2xl tracking-wide">REIS NOIR</span>
             </div>
-            <h1 className="font-display text-3xl md:text-4xl">Checkout transparente</h1>
-            <p className="mt-2 max-w-md text-sm text-ivory/70">Pagamento Mercado Pago embutido e frete com Melhor Envio — experiência de boutique, sem sair da marca.</p>
+            <h1 className="font-display text-3xl md:text-4xl">Finalizar pedido</h1>
+            <p className="mt-2 max-w-md text-sm text-ivory/70">Preencha seus dados para receber sua peça com segurança e carinho.</p>
           </div>
           <p className="flex items-center gap-2 text-[11px] tracking-[0.2em] text-champagne/80 uppercase">
             <ShieldCheck className="h-4 w-4" /> Ambiente seguro
@@ -327,11 +325,6 @@ function Checkout() {
                       {quoteLoading ? "Calculando…" : "Recalcular"}
                     </button>
                   </div>
-                  {quoteProvider && (
-                    <p className="mb-3 text-[10px] tracking-wide text-muted-foreground uppercase">
-                      {quoteProvider === "melhor-envio" ? "Melhor Envio · ao vivo" : "Estimativa local · adicione MELHOR_ENVIO_TOKEN"}
-                    </p>
-                  )}
                   <div className="space-y-2">
                     {quotes.length === 0 && <p className="text-xs text-muted-foreground">Informe o CEP para ver as transportadoras.</p>}
                     {quotes.map((q) => (
@@ -371,7 +364,7 @@ function Checkout() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="font-display text-2xl text-wine">Pagamento</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Checkout transparente Mercado Pago — cartão, PIX e boleto.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Cartão, PIX ou boleto. Escolha a forma que preferir.</p>
                   </div>
                   <MapPin className="h-5 w-5 text-champagne" />
                 </div>
@@ -381,10 +374,10 @@ function Checkout() {
                   {selectedShip ? ` · ${selectedShip.company} ${selectedShip.name}` : ""}
                 </div>
 
-                <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando Mercado Pago…</p>}>
+                <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando pagamento…</p>}>
                   <MercadoPagoBrick
                     amount={total}
-                    publicKey={mpKey || import.meta.env.VITE_MP_PUBLIC_KEY || ""}
+                    publicKey={mpKey || import.meta.env.VITE_MP_PUBLIC_KEY || STORE_MP_PUBLIC_KEY}
                     orderId={draftOrderId}
                     email={email}
                     name={name}

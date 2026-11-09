@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import { STORE_MP_ACCESS_TOKEN, STORE_MP_PUBLIC_KEY } from "@/integrations/store-credentials";
 
 type MpPaymentBody = Record<string, unknown>;
 
 export const getMpPublicKey = createServerFn({ method: "GET" }).handler(async () => {
+  const publicKey = process.env.VITE_MP_PUBLIC_KEY || process.env.MP_PUBLIC_KEY || STORE_MP_PUBLIC_KEY;
   return {
-    publicKey: process.env.VITE_MP_PUBLIC_KEY || process.env.MP_PUBLIC_KEY || "",
-    configured: Boolean(process.env.MP_ACCESS_TOKEN && (process.env.VITE_MP_PUBLIC_KEY || process.env.MP_PUBLIC_KEY)),
+    publicKey,
+    configured: Boolean(process.env.MP_ACCESS_TOKEN || STORE_MP_ACCESS_TOKEN),
   };
 });
 
@@ -23,9 +25,9 @@ export const processMercadoPagoPayment = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    const token = process.env.MP_ACCESS_TOKEN;
+    const token = process.env.MP_ACCESS_TOKEN || STORE_MP_ACCESS_TOKEN;
     if (!token) {
-      throw new Error("Mercado Pago não configurado. Defina MP_ACCESS_TOKEN nas secrets.");
+      throw new Error("Não foi possível processar o pagamento. Tente novamente.");
     }
 
     const amount = Math.round(data.order.amount * 100) / 100;
