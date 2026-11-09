@@ -38,7 +38,16 @@ export type Review = {
   text: string;
   date: string;
   approved: boolean;
+  /** Foto do depoimento (URL) — exibida em círculo */
+  avatar?: string;
 };
+
+/** Avatar fictício estável a partir do nome (fallback). */
+export function reviewAvatar(r: Pick<Review, "author" | "avatar" | "id">) {
+  if (r.avatar?.trim()) return r.avatar.trim();
+  const seed = encodeURIComponent(r.author || r.id || "cliente");
+  return `https://api.dicebear.com/9.x/notionists/svg?seed=${seed}&backgroundColor=f2e8e2`;
+}
 
 export type NewsletterSub = { email: string; date: string };
 
@@ -116,20 +125,62 @@ export const seedReviews: Review[] = [
   {
     id: "r1",
     productId: "1",
-    author: "Fernanda D.",
+    author: "Fernanda Dias",
     rating: 5,
-    text: "Caimento impecável e tecido nobre. Chegou rápido.",
+    text: "Caimento impecável e tecido nobre. Chegou rápido e a embalagem é um mimo.",
     date: new Date().toISOString().slice(0, 10),
     approved: true,
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces",
   },
   {
     id: "r2",
     productId: "2",
-    author: "Larissa M.",
-    rating: 4,
-    text: "Linda peça. Só pediria mais opções de tamanho.",
+    author: "Larissa Mendes",
+    rating: 5,
+    text: "Usei no jantar e todo mundo perguntou de onde era. Virei fã.",
     date: new Date().toISOString().slice(0, 10),
     approved: true,
+    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=faces",
+  },
+  {
+    id: "r3",
+    productId: "3",
+    author: "Camila Rocha",
+    rating: 5,
+    text: "Alfaiataria perfeita. Parece feita sob medida — e o vinho combina com tudo.",
+    date: new Date().toISOString().slice(0, 10),
+    approved: true,
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces",
+  },
+  {
+    id: "r4",
+    productId: "4",
+    author: "Beatriz Lima",
+    rating: 4,
+    text: "Blazer oversized dos sonhos. Troquei o tamanho fácil pelo WhatsApp.",
+    date: new Date().toISOString().slice(0, 10),
+    approved: true,
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=faces",
+  },
+  {
+    id: "r5",
+    productId: "5",
+    author: "Amanda Nunes",
+    rating: 5,
+    text: "Qualidade de boutique. Já indiquei pra três amigas.",
+    date: new Date().toISOString().slice(0, 10),
+    approved: true,
+    avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=200&h=200&fit=crop&crop=faces",
+  },
+  {
+    id: "r6",
+    productId: "6",
+    author: "Sofia Martins",
+    rating: 5,
+    text: "Chegou antes do prazo e o caimento é elegante sem esforço.",
+    date: new Date().toISOString().slice(0, 10),
+    approved: true,
+    avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200&h=200&fit=crop&crop=faces",
   },
 ];
 
@@ -164,7 +215,8 @@ export const seedSeo: SeoConfig = {
 };
 
 export const useFaq = () => useLS("rn-faq-v1", seedFaq);
-export const useReviews = () => useLS("rn-reviews-v1", seedReviews);
+/** v2: avatares em círculo nos depoimentos */
+export const useReviews = () => useLS("rn-reviews-v2", seedReviews);
 export const useNewsletter = () => useLS<NewsletterSub[]>("rn-newsletter-v1", []);
 export const useActivity = () => useLS<ActivityEntry[]>("rn-activity-v1", []);
 export const useAdminUsers = () => useLS("rn-admin-users-v1", seedAdminUsers);

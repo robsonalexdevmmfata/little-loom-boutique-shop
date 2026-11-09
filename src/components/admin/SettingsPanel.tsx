@@ -39,7 +39,7 @@ export function SettingsPanel() {
     const extras: Record<string, unknown> = {};
     for (const key of [
       "rn-faq-v1",
-      "rn-reviews-v1",
+      "rn-reviews-v2",
       "rn-newsletter-v1",
       "rn-activity-v1",
       "rn-admin-users-v1",

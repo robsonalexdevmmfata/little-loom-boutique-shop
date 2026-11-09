@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, CreditCard, Lock, Package, ShieldCheck, ShoppingBag, Sparkles, Star, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/StoreLayout";
-import { useReviews } from "@/lib/cms-extras";
+import { reviewAvatar, useReviews } from "@/lib/cms-extras";
 import { metaContentFromProduct, trackMeta } from "@/lib/meta-ads";
 import { brl, getFreeShippingFrom, stockForSize, useCart, useProducts } from "@/lib/store";
 
@@ -367,15 +367,23 @@ function ProductPage() {
         {productReviews.length > 0 ? (
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {productReviews.map((r) => (
-              <div key={r.id} className="border border-[#e4d8cf] bg-white p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{r.author}</p>
-                  <span className="inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {r.rating}
-                  </span>
+              <div key={r.id} className="flex gap-4 border border-[#e4d8cf] bg-white p-4">
+                <img
+                  src={reviewAvatar(r)}
+                  alt=""
+                  className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-champagne/50 ring-offset-2 ring-offset-white"
+                  loading="lazy"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{r.author}</p>
+                    <span className="inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {r.rating}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-foreground/80">{r.text}</p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">{r.date}</p>
                 </div>
-                <p className="mt-2 text-sm text-foreground/80">{r.text}</p>
-                <p className="mt-2 text-[11px] text-muted-foreground">{r.date}</p>
               </div>
             ))}
           </div>
