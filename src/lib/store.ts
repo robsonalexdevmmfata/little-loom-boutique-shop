@@ -37,6 +37,8 @@ export type Product = {
   color?: string;
   sku?: string;
   sizes: string[];
+  /** Estoque por tamanho (se vazio, usa `stock`) */
+  stockBySize?: Record<string, number>;
   /** Aparece na grade principal da home */
   showInVitrine?: boolean;
   /** Aparece em Destaques */
@@ -70,6 +72,11 @@ export type Order = {
   payment?: PaymentMethod;
   city?: string;
   note?: string;
+  /** Código Melhor Envio / transportadora */
+  trackingCode?: string;
+  /** URL de rastreio para o cliente */
+  trackingUrl?: string;
+  shippingLabel?: string;
 };
 
 export type BenefitCopy = { title: string; subtitle: string };
@@ -742,4 +749,32 @@ export function nextOrderId(orders: Order[]) {
 
 export function paidRevenue(orders: Order[]) {
   return orders.filter((o) => o.status !== "Aguardando pagamento").reduce((a, o) => a + o.total, 0);
+}
+
+/** Estoque disponível para um tamanho (ou total). */
+export function stockForSize(p: Product, size?: string) {
+  if (size && p.stockBySize && Object.keys(p.stockBySize).length > 0) {
+    return p.stockBySize[size] ?? 0;
+  }
+  return p.stock;
+}
+
+/** Recalcula `stock` a partir de `stockBySize`. */
+export function withSyncedStock(p: Product): Product {
+  if (!p.stockBySize || Object.keys(p.stockBySize).length === 0) return p;
+  const total = Object.values(p.stockBySize).reduce((a, n) => a + (Number(n) || 0), 0);
+  return { ...p, stock: total };
+}
+
+/** Distribui estoque total igualmente entre tamanhos (ajuste inicial). */
+export function distributeStockBySizes(p: Product): Product {
+  if (!p.sizes.length) return p;
+  const base = Math.floor(p.stock / p.sizes.length);
+  let rest = p.stock - base * p.sizes.length;
+  const stockBySize: Record<string, number> = {};
+  for (const s of p.sizes) {
+    stockBySize[s] = base + (rest > 0 ? 1 : 0);
+    if (rest > 0) rest -= 1;
+  }
+  return { ...p, stockBySize };
 }

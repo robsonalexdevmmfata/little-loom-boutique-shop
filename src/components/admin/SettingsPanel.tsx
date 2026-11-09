@@ -36,6 +36,26 @@ export function SettingsPanel() {
   };
 
   const exportBackup = () => {
+    const extras: Record<string, unknown> = {};
+    for (const key of [
+      "rn-faq-v1",
+      "rn-reviews-v1",
+      "rn-newsletter-v1",
+      "rn-activity-v1",
+      "rn-admin-users-v1",
+      "rn-analytics-v1",
+      "rn-popup-v1",
+      "rn-seo-v1",
+      "rn-abandoned-v1",
+      "rn-media-v1",
+    ]) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) extras[key] = JSON.parse(raw);
+      } catch {
+        /* ignore */
+      }
+    }
     const payload = {
       exportedAt: new Date().toISOString(),
       products,
@@ -45,6 +65,7 @@ export function SettingsPanel() {
       catalog,
       commerce,
       meta,
+      extras,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -68,6 +89,11 @@ export function SettingsPanel() {
         if (data.catalog) localStorage.setItem("rn-catalog-v1", JSON.stringify(data.catalog));
         if (data.commerce) localStorage.setItem("rn-commerce-v1", JSON.stringify(data.commerce));
         if (data.meta) localStorage.setItem("rn-meta-ads-v1", JSON.stringify(data.meta));
+        if (data.extras && typeof data.extras === "object") {
+          for (const [k, v] of Object.entries(data.extras as Record<string, unknown>)) {
+            localStorage.setItem(k, JSON.stringify(v));
+          }
+        }
         window.dispatchEvent(new Event("rn-store"));
         toast.success("Backup importado — recarregue se algo não atualizar");
         window.location.reload();

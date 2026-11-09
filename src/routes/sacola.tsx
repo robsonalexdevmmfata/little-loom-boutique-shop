@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ShoppingBag, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { StoreLayout } from "@/components/StoreLayout";
-import { brl, calcCartTotals, getFreeShippingFrom, resolveCartLines, useCart, useCoupons, useProducts } from "@/lib/store";
-import { useState } from "react";
+import { clearAbandonedCart, snapshotAbandonedCart } from "@/lib/cms-extras";
+import { brl, calcCartTotals, getFreeShippingFrom, resolveCartLines, stockForSize, useCart, useCoupons, useProducts } from "@/lib/store";
 
 export const Route = createFileRoute("/sacola")({
   head: () => ({
@@ -28,6 +29,21 @@ function Cart() {
   const freeFrom = getFreeShippingFrom();
   const toFree = Math.max(0, freeFrom - (subtotal - discount));
   const exampleCoupon = coupons.find((c) => c.active)?.code ?? "CUPOM";
+
+  useEffect(() => {
+    if (lines.length === 0) {
+      clearAbandonedCart("browser");
+      return;
+    }
+    const t = window.setTimeout(() => {
+      snapshotAbandonedCart({
+        id: "browser",
+        items: lines.map((l) => ({ productId: l.productId, name: l.p.name, size: l.size, qty: l.qty })),
+        totalHint: total,
+      });
+    }, 8000);
+    return () => window.clearTimeout(t);
+  }, [lines, total]);
 
   return (
     <StoreLayout>
@@ -62,7 +78,7 @@ function Cart() {
                         −
                       </button>
                       <span className="w-8 text-center text-sm">{l.qty}</span>
-                      <button type="button" className="px-2.5" onClick={() => setCart(cart.map((c, j) => (j === idx ? { ...c, qty: Math.min(l.p.stock, c.qty + 1) } : c)))}>
+                      <button type="button" className="px-2.5" onClick={() => setCart(cart.map((c, j) => (j === idx ? { ...c, qty: Math.min(stockForSize(l.p, l.size), c.qty + 1) } : c)))}>
                         +
                       </button>
                     </div>

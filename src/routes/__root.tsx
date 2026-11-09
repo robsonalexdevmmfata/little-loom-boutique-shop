@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { GoogleTags } from "@/components/GoogleTags";
 import { MetaPixel } from "@/components/MetaPixel";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -127,6 +128,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <MetaPixel />
+      <GoogleTags />
       <Outlet />
       <Toaster position="top-center" richColors closeButton />
     </QueryClientProvider>

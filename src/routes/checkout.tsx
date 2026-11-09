@@ -3,7 +3,8 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Crown, Lock, MapPin, Package, ShieldCheck, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/StoreLayout";
-import { brl, calcCartTotals, nextOrderId, resolveCartLines, useCart, useOrders, useProducts } from "@/lib/store";
+import { clearAbandonedCart, snapshotAbandonedCart } from "@/lib/cms-extras";
+import { brl, calcCartTotals, nextOrderId, resolveCartLines, stockForSize, useCart, useOrders, useProducts, withSyncedStock } from "@/lib/store";
 import { quoteShipping, type ShippingQuote } from "@/integrations/shipping";
 import { getMpPublicKey } from "@/integrations/mercado-pago";
 import { STORE_MP_PUBLIC_KEY } from "@/integrations/store-credentials";
@@ -32,7 +33,7 @@ const steps = [
 
 function Checkout() {
   const [cart, setCart] = useCart();
-  const [products] = useProducts();
+  const [products, setProducts] = useProducts();
   const [orders, setOrders] = useOrders();
   const lines = resolveCartLines(cart, products);
 
@@ -133,9 +134,31 @@ function Checkout() {
         items,
         payment: paymentLabel.includes("PIX") ? "PIX" : paymentLabel.includes("boleto") || paymentLabel.includes("ticket") ? "Boleto" : "Cartão",
         city: `${city}/${uf}`,
+        shippingLabel: shippingId || undefined,
       },
       ...orders,
     ]);
+    if (status === "Pago") {
+      setProducts(
+        products.map((p) => {
+          const hits = lines.filter((l) => l.productId === p.id);
+          if (!hits.length) return p;
+          let next = { ...p };
+          for (const h of hits) {
+            if (next.stockBySize && Object.keys(next.stockBySize).length) {
+              const cur = stockForSize(next, h.size);
+              next = {
+                ...next,
+                stockBySize: { ...next.stockBySize, [h.size]: Math.max(0, cur - h.qty) },
+              };
+            } else {
+              next = { ...next, stock: Math.max(0, next.stock - h.qty) };
+            }
+          }
+          return withSyncedStock(next);
+        }),
+      );
+    }
     trackMeta("Purchase", {
       content_ids: lines.map((l) => l.p.sku || l.p.id),
       contents: lines.map((l) => ({ id: l.p.sku || l.p.id, quantity: l.qty, item_price: l.p.promo ?? l.p.price })),
@@ -145,11 +168,23 @@ function Checkout() {
       num_items: items,
       order_id: draftOrderId,
     });
+    clearAbandonedCart("browser");
     setCart([]);
     sessionStorage.removeItem("rn-coupon");
     setOrderId(draftOrderId);
     setPayStatus(mpId ? `${paymentLabel} · MP ${mpId}` : paymentLabel);
   };
+
+  useEffect(() => {
+    if (!lines.length) return;
+    snapshotAbandonedCart({
+      id: "browser",
+      items: lines.map((l) => ({ productId: l.productId, name: l.p.name, size: l.size, qty: l.qty })),
+      totalHint: total,
+      email: email.trim() || undefined,
+      phone: phone.trim() || undefined,
+    });
+  }, [lines, total, email, phone]);
 
   const summary = useMemo(
     () => (

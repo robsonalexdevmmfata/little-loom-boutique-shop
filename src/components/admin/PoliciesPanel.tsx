@@ -44,7 +44,9 @@ export function PoliciesPanel() {
           </Panel>
         ))}
       </div>
-      <p className="mt-4 text-center text-[11px] text-zinc-500">Os títulos aparecem no rodapé; os textos completos ficam prontos para páginas / FAQ futuros.</p>
+      <p className="mt-4 text-center text-[11px] text-zinc-500">
+        Na loja: /politica/privacidade · /politica/trocas · /politica/entrega
+      </p>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Search, User, ShoppingBag, Crown, Sparkles, Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { CampaignPopup } from "@/components/CampaignPopup";
+import { NewsletterBlock } from "@/components/NewsletterBlock";
 import { useCart, useCommerce, useSettings } from "@/lib/store";
 
 export function Logo({ className = "" }: { className?: string }) {
@@ -41,7 +43,7 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
           <Link to="/">Início</Link>
           <a href="/#colecoes">Coleções</a>
           <a href="/#novidades">Novidades</a>
-          <a href="/#sobre">Sobre nós</a>
+          <Link to="/faq">FAQ</Link>
         </nav>
         <button aria-label="Menu" onClick={() => setOpen(!open)} className="lg:hidden">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -64,6 +66,7 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
             <Link to="/">Início</Link>
             <a href="/#colecoes">Coleções</a>
             <a href="/#novidades">Novidades</a>
+            <Link to="/faq">FAQ</Link>
             <a href="/#sobre">Sobre nós</a>
           </nav>
         )}
@@ -74,6 +77,8 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
           <div>
             <Logo className="!items-start" />
             <p className="mt-4 text-sm">{s.footerAbout}</p>
+            <p className="mt-6 text-xs tracking-wide text-champagne uppercase">Novidades por e-mail</p>
+            <NewsletterBlock />
           </div>
           <div className="space-y-2 text-sm">
             <h4 className="font-display text-lg text-champagne">Atendimento</h4>
@@ -87,12 +92,29 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
                 Instagram @{ig}
               </a>
             </p>
+            <p>
+              <Link to="/faq" className="transition hover:text-champagne">
+                FAQ
+              </Link>
+            </p>
           </div>
           <div className="space-y-2 text-sm">
             <h4 className="font-display text-lg text-champagne">{s.footerPoliciesTitle}</h4>
-            <p>{s.footerPolicy1}</p>
-            <p>{s.footerPolicy2}</p>
-            <p>{s.footerPolicy3}</p>
+            <p>
+              <Link to="/politica/$slug" params={{ slug: "privacidade" }} className="transition hover:text-champagne">
+                {s.footerPolicy1}
+              </Link>
+            </p>
+            <p>
+              <Link to="/politica/$slug" params={{ slug: "trocas" }} className="transition hover:text-champagne">
+                {s.footerPolicy2}
+              </Link>
+            </p>
+            <p>
+              <Link to="/politica/$slug" params={{ slug: "entrega" }} className="transition hover:text-champagne">
+                {s.footerPolicy3}
+              </Link>
+            </p>
           </div>
           <div className="space-y-2 text-sm">
             <h4 className="font-display text-lg text-champagne">{s.footerPaymentTitle}</h4>
@@ -109,6 +131,7 @@ export function StoreLayout({ children, overlay = false }: { children: ReactNode
           </p>
         </div>
       </footer>
+      <CampaignPopup />
     </div>
   );
 }

@@ -26,32 +26,43 @@ import {
   Settings as SettingsIcon,
   ShoppingBag,
   Sparkles,
+  Star,
   Store,
   TicketPercent,
   Trash2,
+  Upload,
   Users,
   Warehouse,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AbandonedPanel } from "@/components/admin/AbandonedPanel";
+import { ActivityPanel } from "@/components/admin/ActivityPanel";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
+import { AnalyticsPanel } from "@/components/admin/AnalyticsPanel";
 import { CommandPalette } from "@/components/admin/CommandPalette";
 import { CustomersPanel } from "@/components/admin/CustomersPanel";
 import { CouponsPanel } from "@/components/admin/CouponsPanel";
 import { DashboardPanel, type AdminGo } from "@/components/admin/DashboardPanel";
+import { FaqPanel } from "@/components/admin/FaqPanel";
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel";
 import { InventoryPanel } from "@/components/admin/InventoryPanel";
 import { MediaPanel } from "@/components/admin/MediaPanel";
 import { MetaAdsPanel } from "@/components/admin/MetaAdsPanel";
+import { NewsletterPanel } from "@/components/admin/NewsletterPanel";
 import { PoliciesPanel } from "@/components/admin/PoliciesPanel";
+import { PopupPanel } from "@/components/admin/PopupPanel";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
+import { ReviewsPanel } from "@/components/admin/ReviewsPanel";
+import { SeoPanel } from "@/components/admin/SeoPanel";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
+import { UsersPanel } from "@/components/admin/UsersPanel";
 import { Drawer, EmptyState, Field, ImageUploadField, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
 import { Switch } from "@/components/ui/switch";
-import { exportOrdersCsv, exportProductsCsv } from "@/lib/admin-utils";
+import { exportOrdersCsv, exportProductsCsv, parseProductsCsv } from "@/lib/admin-utils";
+import { clearAdminSession, findAdminUser, getAdminSession, logActivity, setAdminSession, useAdminUsers } from "@/lib/cms-extras";
 import { printOrderSlip } from "@/lib/print-order";
 import {
-  ADMIN_PASSWORD,
   brl,
   images,
   useCatalog,
@@ -59,6 +70,7 @@ import {
   useOrders,
   useProducts,
   useSettings,
+  withSyncedStock,
   type CatalogCategory,
   type Order,
   type Product,
@@ -85,32 +97,41 @@ const navGroups: { label: string; items: { id: TabId; icon: typeof LayoutDashboa
     label: "Principal",
     items: [
       { id: "Painel", icon: LayoutDashboard, desc: "Visão geral" },
-      { id: "Pedidos", icon: ShoppingBag, desc: "Vendas" },
+      { id: "Pedidos", icon: ShoppingBag, desc: "Vendas e rastreio" },
       { id: "Clientes", icon: Users, desc: "Compradores" },
+      { id: "Sacolas", icon: ShoppingBag, desc: "Abandonadas" },
       { id: "Relatórios", icon: BarChart3, desc: "Métricas" },
+      { id: "Histórico", icon: ScrollText, desc: "Alterações" },
     ],
   },
   {
     label: "Catálogo",
     items: [
-      { id: "Produtos", icon: Package, desc: "Produtos e vitrine" },
-      { id: "Estoque", icon: Warehouse, desc: "Unidades e alertas" },
+      { id: "Produtos", icon: Package, desc: "Catálogo e CSV" },
+      { id: "Estoque", icon: Warehouse, desc: "Por tamanho" },
       { id: "Mídia", icon: Images, desc: "Biblioteca de fotos" },
+      { id: "Avaliações", icon: Star, desc: "Reviews" },
     ],
   },
   {
     label: "Marketing",
     items: [
       { id: "Meta Ads", icon: Megaphone, desc: "Facebook e Instagram" },
+      { id: "Analytics", icon: BarChart3, desc: "GA4 e GTM" },
       { id: "Cupons", icon: TicketPercent, desc: "Descontos" },
+      { id: "Popup", icon: Sparkles, desc: "Campanha" },
+      { id: "Newsletter", icon: MessageCircle, desc: "E-mails" },
+      { id: "SEO", icon: Search, desc: "Google" },
       { id: "Aparência", icon: Palette, desc: "Conteúdo da loja" },
       { id: "Políticas", icon: ScrollText, desc: "Privacidade e trocas" },
+      { id: "FAQ", icon: ScrollText, desc: "Perguntas" },
     ],
   },
   {
     label: "Sistema",
     items: [
       { id: "Integrações", icon: Plug, desc: "Pagamentos e frete" },
+      { id: "Usuários", icon: Users, desc: "Acessos" },
       { id: "Configurações", icon: SettingsIcon, desc: "Operação" },
     ],
   },
@@ -125,6 +146,8 @@ function Admin() {
   const [err, setErr] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [sessionUser, setSessionUser] = useState<{ name: string; role: "dono" | "atendente" } | null>(null);
+  const [adminUsers] = useAdminUsers();
   const [commerce] = useCommerce();
   const [orders] = useOrders();
   const [products] = useProducts();
@@ -133,7 +156,10 @@ function Admin() {
     products.filter((p) => p.stock <= (commerce.lowStockThreshold ?? 5)).length;
 
   useEffect(() => {
-    if (sessionStorage.getItem("rn-admin") === "1") setOk(true);
+    if (sessionStorage.getItem("rn-admin") === "1") {
+      setOk(true);
+      setSessionUser(getAdminSession());
+    }
   }, []);
 
   useEffect(() => {
@@ -153,10 +179,13 @@ function Admin() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (pw === ADMIN_PASSWORD) {
-              sessionStorage.setItem("rn-admin", "1");
+            const user = findAdminUser(adminUsers, pw);
+            if (user) {
+              setAdminSession(user);
+              setSessionUser({ name: user.name, role: user.role });
               setOk(true);
               setErr(false);
+              logActivity(user.name, "Login", `Acesso como ${user.role}`);
             } else {
               setErr(true);
               toast.error("Senha incorreta");
@@ -170,6 +199,7 @@ function Admin() {
             </span>
             <h1 className="mt-4 text-lg font-semibold tracking-tight text-zinc-900">REIS NOIR</h1>
             <p className="mt-1 text-sm text-zinc-500">Acesse o painel da loja</p>
+            <p className="mt-2 text-[11px] text-zinc-400">Dono: 1234 · Atendimento: loja</p>
           </div>
           <label className="block text-sm font-medium text-zinc-700">
             Senha
@@ -251,9 +281,16 @@ function Admin() {
         </nav>
 
         <div className="border-t border-white/10 p-3">
-          <div className="mb-2 flex items-center gap-2 px-1 text-[11px] text-zinc-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Loja publicada
+          <div className="mb-2 px-1 text-[11px] text-zinc-500">
+            <p className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Loja publicada
+            </p>
+            {sessionUser && (
+              <p className="mt-1 truncate text-zinc-400">
+                {sessionUser.name} · {sessionUser.role}
+              </p>
+            )}
           </div>
           <Link
             to="/"
@@ -264,7 +301,8 @@ function Admin() {
           <button
             type="button"
             onClick={() => {
-              sessionStorage.removeItem("rn-admin");
+              clearAdminSession();
+              setSessionUser(null);
               setOk(false);
             }}
             className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-zinc-400 transition hover:bg-white/5 hover:text-white"
@@ -329,12 +367,21 @@ function Admin() {
           {tab === "Mídia" && <MediaPanel />}
           {tab === "Pedidos" && <Orders />}
           {tab === "Clientes" && <CustomersPanel />}
+          {tab === "Sacolas" && <AbandonedPanel />}
           {tab === "Cupons" && <CouponsPanel />}
           {tab === "Relatórios" && <ReportsPanel />}
+          {tab === "Histórico" && <ActivityPanel />}
           {tab === "Aparência" && <Appearance />}
           {tab === "Políticas" && <PoliciesPanel />}
+          {tab === "FAQ" && <FaqPanel />}
+          {tab === "SEO" && <SeoPanel />}
+          {tab === "Avaliações" && <ReviewsPanel />}
+          {tab === "Newsletter" && <NewsletterPanel />}
+          {tab === "Popup" && <PopupPanel />}
           {tab === "Meta Ads" && <MetaAdsPanel />}
+          {tab === "Analytics" && <AnalyticsPanel />}
           {tab === "Integrações" && <IntegrationsPanel onOpenMeta={() => setTab("Meta Ads")} />}
+          {tab === "Usuários" && <UsersPanel />}
           {tab === "Configurações" && <SettingsPanel />}
         </main>
       </div>
@@ -376,7 +423,29 @@ function Products() {
   const [newSub, setNewSub] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string[]>([]);
 
-  const upd = (id: string, patch: Partial<Product>) => setProducts(products.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const who = getAdminSession()?.name ?? "Admin";
+  const upd = (id: string, patch: Partial<Product>) => {
+    setProducts(products.map((p) => (p.id === id ? withSyncedStock({ ...p, ...patch }) : p)));
+    if (patch.price != null || patch.promo !== undefined || patch.stock != null || patch.stockBySize) {
+      const p = products.find((x) => x.id === id);
+      logActivity(who, "Produto", `${p?.name ?? id}: preço/estoque alterado`);
+    }
+  };
+
+  const importCsv = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const { products: next, created, updated } = parseProductsCsv(String(reader.result), products);
+        setProducts(next.map(withSyncedStock));
+        logActivity(who, "Import CSV", `${created} novos · ${updated} atualizados`);
+        toast.success(`CSV importado: ${created} novos, ${updated} atualizados`);
+      } catch {
+        toast.error("CSV inválido");
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const add = () => {
     const id = String(Date.now());
@@ -441,8 +510,21 @@ function Products() {
               onClick={() => exportProductsCsv(products)}
               className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
             >
-              <Download className="h-3.5 w-3.5" /> Exportar
+              <Download className="h-3.5 w-3.5" /> Exportar CSV
             </button>
+            <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50">
+              <Upload className="h-3.5 w-3.5" /> Importar CSV
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) importCsv(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <button
               type="button"
               onClick={() => setShowCats((v) => !v)}
@@ -759,8 +841,14 @@ function Products() {
                     />
                   </label>
                   <label className="block text-xs font-medium text-zinc-600">
-                    Estoque
-                    <input type="number" className={`${field} mt-1.5`} value={openProduct.stock} onChange={(e) => upd(openProduct.id, { stock: +e.target.value })} />
+                    Estoque total
+                    <input
+                      type="number"
+                      className={`${field} mt-1.5`}
+                      value={openProduct.stock}
+                      onChange={(e) => upd(openProduct.id, { stock: +e.target.value, stockBySize: undefined })}
+                      disabled={Boolean(openProduct.stockBySize && Object.keys(openProduct.stockBySize).length)}
+                    />
                   </label>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -784,6 +872,54 @@ function Products() {
                       placeholder="PP, P, M, G"
                     />
                   </label>
+                </div>
+                <div className="rounded-lg border border-zinc-200 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-zinc-600">Estoque por tamanho</p>
+                    <button
+                      type="button"
+                      className="text-[11px] font-medium text-wine hover:underline"
+                      onClick={() => {
+                        if (openProduct.stockBySize && Object.keys(openProduct.stockBySize).length) {
+                          upd(openProduct.id, { stockBySize: undefined });
+                          toast.message("Voltou ao estoque único");
+                        } else {
+                          const base = Math.floor(openProduct.stock / Math.max(1, openProduct.sizes.length));
+                          let rest = openProduct.stock - base * openProduct.sizes.length;
+                          const stockBySize: Record<string, number> = {};
+                          for (const s of openProduct.sizes) {
+                            stockBySize[s] = base + (rest > 0 ? 1 : 0);
+                            if (rest > 0) rest -= 1;
+                          }
+                          upd(openProduct.id, { stockBySize });
+                          toast.success("Estoque distribuído por tamanho");
+                        }
+                      }}
+                    >
+                      {openProduct.stockBySize && Object.keys(openProduct.stockBySize).length ? "Usar estoque único" : "Ativar por tamanho"}
+                    </button>
+                  </div>
+                  {openProduct.stockBySize && Object.keys(openProduct.stockBySize).length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {openProduct.sizes.map((sz) => (
+                        <label key={sz} className="text-[11px] font-medium text-zinc-500">
+                          {sz}
+                          <input
+                            type="number"
+                            className={`${field} mt-1`}
+                            value={openProduct.stockBySize?.[sz] ?? 0}
+                            onChange={(e) =>
+                              upd(openProduct.id, {
+                                stockBySize: { ...openProduct.stockBySize, [sz]: Math.max(0, +e.target.value || 0) },
+                              })
+                            }
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-zinc-400">Opcional: controle separado PP/P/M/G.</p>
+                  )}
                 </div>
               </section>
 
@@ -1111,6 +1247,62 @@ function Orders() {
               <p className="mb-2 text-xs font-medium text-zinc-500 uppercase">Status atual</p>
               <StatusPill status={openOrder.status} />
             </div>
+            <div className="space-y-3 rounded-lg border border-zinc-200 p-4">
+              <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">Envio e rastreio</p>
+              <label className="block text-xs font-medium text-zinc-600">
+                Código de rastreio
+                <input
+                  className={`${field} mt-1.5`}
+                  value={openOrder.trackingCode ?? ""}
+                  onChange={(e) => {
+                    const trackingCode = e.target.value;
+                    setOrders(
+                      orders.map((x) =>
+                        x.id === openOrder.id
+                          ? {
+                              ...x,
+                              trackingCode,
+                              status: trackingCode.trim() && x.status === "Pago" ? "Enviado" : x.status,
+                            }
+                          : x,
+                      ),
+                    );
+                  }}
+                  placeholder="Ex.: ME123456789BR"
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                URL de rastreio
+                <input
+                  className={`${field} mt-1.5`}
+                  value={openOrder.trackingUrl ?? ""}
+                  onChange={(e) => setOrders(orders.map((x) => (x.id === openOrder.id ? { ...x, trackingUrl: e.target.value } : x)))}
+                  placeholder="https://…"
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Etiqueta / obs. frete
+                <input
+                  className={`${field} mt-1.5`}
+                  value={openOrder.shippingLabel ?? ""}
+                  onChange={(e) => setOrders(orders.map((x) => (x.id === openOrder.id ? { ...x, shippingLabel: e.target.value } : x)))}
+                  placeholder="Melhor Envio · PAC"
+                />
+              </label>
+              {openOrder.trackingCode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrders(orders.map((x) => (x.id === openOrder.id ? { ...x, status: "Enviado" } : x)));
+                    logActivity(getAdminSession()?.name ?? "Admin", "Pedido", `${openOrder.id} marcado como Enviado`);
+                    toast.success("Status: Enviado");
+                  }}
+                  className="h-9 rounded-md bg-wine px-3 text-xs font-medium text-ivory hover:bg-wine-deep"
+                >
+                  Marcar como enviado
+                </button>
+              )}
+            </div>
             <label className="block text-xs font-medium text-zinc-600">
               Nota interna
               <textarea
@@ -1120,16 +1312,30 @@ function Orders() {
                 placeholder="Observações da equipe sobre este pedido…"
               />
             </label>
-            <a
-              href={`https://wa.me/${(openOrder.phone || settings.footerWhatsappNumber).replace(/\D/g, "")}?text=${encodeURIComponent(
-                `Olá ${openOrder.customer}! Sobre seu pedido ${openOrder.id} na REIS NOIR…`,
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
-            >
-              <MessageCircle className="h-3.5 w-3.5" /> Falar no WhatsApp
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={`https://wa.me/${(openOrder.phone || settings.footerWhatsappNumber).replace(/\D/g, "")}?text=${encodeURIComponent(
+                  openOrder.trackingCode
+                    ? `Olá ${openOrder.customer}! Seu pedido ${openOrder.id} foi enviado. Rastreio: ${openOrder.trackingCode}${openOrder.trackingUrl ? ` — ${openOrder.trackingUrl}` : ""}`
+                    : `Olá ${openOrder.customer}! Sobre seu pedido ${openOrder.id} na REIS NOIR…`,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> {openOrder.trackingCode ? "Avisar rastreio" : "Falar no WhatsApp"}
+              </a>
+              {openOrder.trackingUrl && (
+                <a
+                  href={openOrder.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-200 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Abrir rastreio
+                </a>
+              )}
+            </div>
           </div>
         )}
       </Drawer>

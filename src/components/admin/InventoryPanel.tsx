@@ -1,15 +1,18 @@
-import { AlertTriangle, Minus, Plus } from "lucide-react";
+import { AlertTriangle, MessageCircle, Minus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { brl, useCommerce, useProducts, type Product } from "@/lib/store";
+import { getAdminSession, logActivity } from "@/lib/cms-extras";
+import { brl, stockForSize, useCommerce, useProducts, useSettings, withSyncedStock, type Product } from "@/lib/store";
 import { PageHeader, Panel, ProductStatusBadge, field } from "./shared";
 
 export function InventoryPanel() {
   const [products, setProducts] = useProducts();
   const [commerce] = useCommerce();
+  const [settings] = useSettings();
   const [q, setQ] = useState("");
   const [onlyLow, setOnlyLow] = useState(false);
   const threshold = commerce.lowStockThreshold ?? 5;
+  const wa = settings.footerWhatsappNumber.replace(/\D/g, "");
 
   const list = useMemo(() => {
     return products
@@ -22,12 +25,26 @@ export function InventoryPanel() {
       .sort((a, b) => a.stock - b.stock);
   }, [products, q, onlyLow, threshold]);
 
-  const lowCount = products.filter((p) => p.stock <= threshold).length;
+  const low = products.filter((p) => p.stock <= threshold);
+  const lowCount = low.length;
   const zeroCount = products.filter((p) => p.stock <= 0).length;
   const units = products.reduce((a, p) => a + p.stock, 0);
 
+  const apply = (id: string, next: Product) => {
+    const synced = withSyncedStock(next);
+    setProducts(products.map((p) => (p.id === id ? synced : p)));
+    logActivity(getAdminSession()?.name ?? "Admin", "Estoque", `${synced.name}: ${synced.stock} un.`);
+  };
+
   const setStock = (id: string, stock: number) => {
-    setProducts(products.map((p) => (p.id === id ? { ...p, stock: Math.max(0, Math.round(stock)) } : p)));
+    const p = products.find((x) => x.id === id);
+    if (!p) return;
+    apply(id, { ...p, stock: Math.max(0, Math.round(stock)), stockBySize: undefined });
+  };
+
+  const setSizeStock = (p: Product, size: string, qty: number) => {
+    const stockBySize = { ...(p.stockBySize ?? {}), [size]: Math.max(0, Math.round(qty)) };
+    apply(p.id, { ...p, stockBySize });
   };
 
   const bump = (p: Product, delta: number) => {
@@ -35,21 +52,40 @@ export function InventoryPanel() {
     toast.success(`${p.name}: estoque ${Math.max(0, p.stock + delta)}`);
   };
 
+  const alertMsg = encodeURIComponent(
+    `Alerta estoque REIS NOIR:\n${low
+      .slice(0, 12)
+      .map((p) => `• ${p.name}: ${p.stock} un.`)
+      .join("\n")}`,
+  );
+
   return (
     <div>
       <PageHeader
         title="Estoque"
-        subtitle="Ajuste rápido de unidades e alertas de ruptura"
+        subtitle="Unidades totais, por tamanho e alertas de ruptura"
         actions={
-          <button
-            type="button"
-            onClick={() => setOnlyLow((v) => !v)}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs font-medium ${
-              onlyLow ? "bg-amber-100 text-amber-900" : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-            }`}
-          >
-            <AlertTriangle className="h-3.5 w-3.5" /> Só estoque baixo
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {lowCount > 0 && (
+              <a
+                href={`https://wa.me/${wa}?text=${alertMsg}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-xs font-medium text-white hover:bg-emerald-700"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> Alertar no WhatsApp
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => setOnlyLow((v) => !v)}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-xs font-medium ${
+                onlyLow ? "bg-amber-100 text-amber-900" : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" /> Só estoque baixo
+            </button>
+          </div>
         }
       />
 
@@ -73,7 +109,7 @@ export function InventoryPanel() {
           <input className={`${field} max-w-md`} placeholder="Buscar produto ou SKU…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead className="bg-zinc-50 text-left text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
               <tr>
                 <th className="px-4 py-3">Produto</th>
@@ -85,7 +121,7 @@ export function InventoryPanel() {
             </thead>
             <tbody>
               {list.map((p) => (
-                <tr key={p.id} className="border-t border-zinc-100">
+                <tr key={p.id} className="border-t border-zinc-100 align-top">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <img src={p.image} alt="" className="h-10 w-8 rounded object-cover object-top" />
@@ -115,6 +151,21 @@ export function InventoryPanel() {
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
+                    {p.stockBySize && Object.keys(p.stockBySize).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {p.sizes.map((sz) => (
+                          <label key={sz} className="inline-flex items-center gap-1 rounded border border-zinc-200 px-1.5 py-1 text-[10px] text-zinc-500">
+                            {sz}
+                            <input
+                              type="number"
+                              className="w-12 rounded border border-zinc-200 px-1 py-0.5 text-center text-xs"
+                              value={stockForSize(p, sz)}
+                              onChange={(e) => setSizeStock(p, sz, +e.target.value)}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

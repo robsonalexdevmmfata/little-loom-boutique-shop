@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown, CreditCard, Lock, Package, ShieldCheck, ShoppingBag, Sparkles, Truck } from "lucide-react";
+import { Check, ChevronDown, CreditCard, Lock, Package, ShieldCheck, ShoppingBag, Sparkles, Star, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/StoreLayout";
+import { useReviews } from "@/lib/cms-extras";
 import { metaContentFromProduct, trackMeta } from "@/lib/meta-ads";
-import { brl, getFreeShippingFrom, useCart, useProducts } from "@/lib/store";
+import { brl, getFreeShippingFrom, stockForSize, useCart, useProducts } from "@/lib/store";
 
 export const Route = createFileRoute("/produto/$slug")({
   head: ({ params }) => ({
@@ -26,6 +27,7 @@ function ProductPage() {
   const { slug } = Route.useParams();
   const [products] = useProducts();
   const [cart, setCart] = useCart();
+  const [reviews] = useReviews();
   const nav = useNavigate();
   const p = products.find((x) => x.slug === slug);
   const [size, setSize] = useState("");
@@ -68,9 +70,14 @@ function ProductPage() {
   const final = p.promo ?? p.price;
   const save = p.promo ? p.price - p.promo : 0;
   const pixPrice = final * 0.95;
-  const lowStock = p.stock > 0 && p.stock <= 5;
+  const available = size ? stockForSize(p, size) : p.stock;
+  const lowStock = available > 0 && available <= 5;
   const activePhoto = gallery[photo] ?? p.image;
   const freeFrom = getFreeShippingFrom();
+  const productReviews = reviews.filter((r) => r.productId === p.id && r.approved);
+  const avgRating = productReviews.length
+    ? productReviews.reduce((a, r) => a + r.rating, 0) / productReviews.length
+    : 0;
 
   const add = (goCheckout: boolean) => {
     if (!size) {
@@ -78,9 +85,14 @@ function ProductPage() {
       toast.error("Escolha seu tamanho para continuar");
       return;
     }
+    const max = stockForSize(p, size);
+    if (max < 1) {
+      toast.error("Tamanho esgotado");
+      return;
+    }
     setSizeError(false);
     const ex = cart.find((c) => c.productId === p.id && c.size === size);
-    setCart(ex ? cart.map((c) => (c === ex ? { ...c, qty: Math.min(p.stock, c.qty + qty) } : c)) : [...cart, { productId: p.id, size, qty }]);
+    setCart(ex ? cart.map((c) => (c === ex ? { ...c, qty: Math.min(max, c.qty + qty) } : c)) : [...cart, { productId: p.id, size, qty: Math.min(max, qty) }]);
     trackMeta("AddToCart", { ...metaContentFromProduct(p), quantity: qty });
     setAdded(true);
     toast.success(goCheckout ? "Quase sua — finalizando pedido…" : "Peça na sacola. Ela combina com você.");
@@ -237,24 +249,42 @@ function ProductPage() {
           <div className="mt-8">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">Escolha o tamanho</p>
-              {lowStock && <p className="text-xs text-wine">Restam só {p.stock} — corre</p>}
+              {lowStock && <p className="text-xs text-wine">Restam só {available} — corre</p>}
             </div>
+            {productReviews.length > 0 && (
+              <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                {avgRating.toFixed(1)} · {productReviews.length} avaliação{productReviews.length > 1 ? "ões" : ""}
+              </p>
+            )}
             <div className={`mt-3 flex flex-wrap gap-2 ${sizeError ? "animate-pulse" : ""}`}>
-              {p.sizes.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => {
-                    setSize(s);
-                    setSizeError(false);
-                  }}
-                  className={`h-11 min-w-12 border px-3 text-sm transition ${
-                    size === s ? "border-wine bg-wine text-ivory" : sizeError ? "border-wine/60 text-wine" : "border-border hover:border-wine/50"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
+              {p.sizes.map((s) => {
+                const szStock = stockForSize(p, s);
+                const soldOut = szStock < 1;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={soldOut}
+                    onClick={() => {
+                      setSize(s);
+                      setSizeError(false);
+                      setQty(1);
+                    }}
+                    className={`h-11 min-w-12 border px-3 text-sm transition ${
+                      soldOut
+                        ? "cursor-not-allowed border-border text-muted-foreground line-through opacity-50"
+                        : size === s
+                          ? "border-wine bg-wine text-ivory"
+                          : sizeError
+                            ? "border-wine/60 text-wine"
+                            : "border-border hover:border-wine/50"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
             </div>
             {sizeError && <p className="mt-2 text-xs text-wine">Selecione um tamanho para garantir a modelagem certa.</p>}
           </div>
@@ -265,17 +295,17 @@ function ProductPage() {
                 −
               </button>
               <span className="w-8 text-center text-sm">{qty}</span>
-              <button type="button" className="px-3 text-lg" onClick={() => setQty((q) => Math.min(p.stock, q + 1))} aria-label="Aumentar">
+              <button type="button" className="px-3 text-lg" onClick={() => setQty((q) => Math.min(Math.max(1, available), q + 1))} aria-label="Aumentar">
                 +
               </button>
             </div>
-            <span className="text-xs text-muted-foreground">{p.stock > 0 ? `${p.stock} disponíveis` : "Esgotado"}</span>
+            <span className="text-xs text-muted-foreground">{available > 0 ? `${available} disponíveis` : "Esgotado"}</span>
           </div>
 
           <div className="mt-7 hidden flex-col gap-3 sm:flex">
             <button
               type="button"
-              disabled={p.stock < 1}
+              disabled={available < 1}
               onClick={() => add(true)}
               className="flex h-12 items-center justify-center gap-2 bg-wine px-6 text-[11px] tracking-[0.22em] text-ivory uppercase transition hover:bg-wine-deep disabled:opacity-40"
             >
@@ -284,7 +314,7 @@ function ProductPage() {
             </button>
             <button
               type="button"
-              disabled={p.stock < 1}
+              disabled={available < 1}
               onClick={() => add(false)}
               className="flex h-12 items-center justify-center gap-2 border border-wine px-6 text-[11px] tracking-[0.22em] text-wine uppercase transition hover:bg-blush disabled:opacity-40"
             >
@@ -329,6 +359,26 @@ function ProductPage() {
         </div>
       </div>
 
+      {productReviews.length > 0 && (
+        <section className="border-t border-border px-6 py-12 md:px-16 lg:px-24">
+          <h2 className="font-display text-2xl text-wine">Avaliações</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {productReviews.map((r) => (
+              <div key={r.id} className="border border-[#e4d8cf] bg-white p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{r.author}</p>
+                  <span className="inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {r.rating}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-foreground/80">{r.text}</p>
+                <p className="mt-2 text-[11px] text-muted-foreground">{r.date}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {related.length > 0 && (
         <section className="border-t border-border bg-blush/40 px-6 py-14 md:px-16 lg:px-24">
           <p className="text-center text-[11px] tracking-[0.4em] text-wine/70 uppercase">Complete o look</p>
@@ -356,10 +406,10 @@ function ProductPage() {
           <span className="text-[10px] text-muted-foreground">12x {brl(final / 12)}</span>
         </div>
         <div className="flex gap-2">
-          <button type="button" disabled={p.stock < 1} onClick={() => add(false)} className="h-12 flex-1 border border-wine text-[10px] tracking-wider text-wine uppercase disabled:opacity-40">
+          <button type="button" disabled={available < 1} onClick={() => add(false)} className="h-12 flex-1 border border-wine text-[10px] tracking-wider text-wine uppercase disabled:opacity-40">
             Sacola
           </button>
-          <button type="button" disabled={p.stock < 1} onClick={() => add(true)} className="h-12 flex-[1.4] bg-wine text-[10px] tracking-wider text-ivory uppercase disabled:opacity-40">
+          <button type="button" disabled={available < 1} onClick={() => add(true)} className="h-12 flex-[1.4] bg-wine text-[10px] tracking-wider text-ivory uppercase disabled:opacity-40">
             Comprar agora
           </button>
         </div>

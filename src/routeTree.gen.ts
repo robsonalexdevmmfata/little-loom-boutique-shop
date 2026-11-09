@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as SacolaRouteImport } from './routes/sacola'
+import { Route as PoliticaSlugRouteImport } from './routes/politica.$slug'
 import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -30,9 +32,19 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SacolaRoute = SacolaRouteImport.update({
   id: '/sacola',
   path: '/sacola',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoliticaSlugRoute = PoliticaSlugRouteImport.update({
+  id: '/politica/$slug',
+  path: '/politica/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProdutoSlugRoute = ProdutoSlugRouteImport.update({
@@ -45,14 +57,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/faq': typeof FaqRoute
   '/sacola': typeof SacolaRoute
+  '/politica/$slug': typeof PoliticaSlugRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/faq': typeof FaqRoute
   '/sacola': typeof SacolaRoute
+  '/politica/$slug': typeof PoliticaSlugRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRoutesById {
@@ -60,22 +76,48 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/faq': typeof FaqRoute
   '/sacola': typeof SacolaRoute
+  '/politica/$slug': typeof PoliticaSlugRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/checkout' | '/sacola' | '/produto/$slug'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/checkout'
+    | '/faq'
+    | '/sacola'
+    | '/politica/$slug'
+    | '/produto/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/checkout' | '/sacola' | '/produto/$slug'
-  id: '__root__' | '/' | '/admin' | '/checkout' | '/sacola' | '/produto/$slug'
+  to:
+    | '/'
+    | '/admin'
+    | '/checkout'
+    | '/faq'
+    | '/sacola'
+    | '/politica/$slug'
+    | '/produto/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/checkout'
+    | '/faq'
+    | '/sacola'
+    | '/politica/$slug'
+    | '/produto/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   CheckoutRoute: typeof CheckoutRoute
+  FaqRoute: typeof FaqRoute
   SacolaRoute: typeof SacolaRoute
+  PoliticaSlugRoute: typeof PoliticaSlugRoute
   ProdutoSlugRoute: typeof ProdutoSlugRoute
 }
 
@@ -102,11 +144,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sacola': {
       id: '/sacola'
       path: '/sacola'
       fullPath: '/sacola'
       preLoaderRoute: typeof SacolaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica/$slug': {
+      id: '/politica/$slug'
+      path: '/politica/$slug'
+      fullPath: '/politica/$slug'
+      preLoaderRoute: typeof PoliticaSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/produto/$slug': {
@@ -123,7 +179,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   CheckoutRoute: CheckoutRoute,
+  FaqRoute: FaqRoute,
   SacolaRoute: SacolaRoute,
+  PoliticaSlugRoute: PoliticaSlugRoute,
   ProdutoSlugRoute: ProdutoSlugRoute,
 }
 export const routeTree = rootRouteImport
