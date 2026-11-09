@@ -1,9 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import {
-  STORE_MELHOR_ENVIO_CLIENT_ID,
-  STORE_MELHOR_ENVIO_CLIENT_SECRET,
-  STORE_MELHOR_ENVIO_FROM_CEP,
-} from "@/integrations/store-credentials";
+import { STORE_MELHOR_ENVIO_FROM_CEP } from "@/integrations/store-credentials";
 
 export type ShippingQuote = {
   id: string;
