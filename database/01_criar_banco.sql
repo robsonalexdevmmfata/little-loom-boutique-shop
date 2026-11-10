@@ -1,28 +1,29 @@
 -- ============================================================
--- REIS NOIR — criar usuário e banco no PostgreSQL
--- Rode conectado no banco "postgres" (usuário postgres / admin).
+-- PASSO 1 — usuario PADRAO do PostgreSQL = "postgres"
 --
--- pgAdmin: botão direito no servidor → Query Tool → Execute (F5)
--- psql:    psql -U postgres -f database/01_criar_banco.sql
+-- No pgAdmin:
+--   Login com:  usuario postgres  +  a senha que VOCE criou na instalacao
+--   Abra o banco: postgres
+--   Botao direito em "postgres" → Query Tool → cole isto → F5
 --
--- Se o usuário/banco já existir, ignore o erro e siga para 02_schema.sql
+-- Ainda NAO existe usuario "reinoir". Ele e criado abaixo.
 -- ============================================================
 
-CREATE ROLE reinoir LOGIN PASSWORD '320809';
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'reinoir') THEN
+    CREATE ROLE reinoir LOGIN PASSWORD '320809';
+  ELSE
+    ALTER ROLE reinoir WITH LOGIN PASSWORD '320809';
+  END IF;
+END
+$$;
 
+-- Se o banco ainda nao existe, rode a linha abaixo.
+-- Se der "already exists", ignore e siga em frente.
 CREATE DATABASE reinoir
   OWNER reinoir
   ENCODING 'UTF8'
   TEMPLATE template0;
 
 GRANT ALL PRIVILEGES ON DATABASE reinoir TO reinoir;
-
--- Depois de criar, conecte no banco "reinoir" e rode 02_schema.sql
---
--- Conexão:
---   Host:     localhost
---   Porta:    5432
---   Database: reinoir
---   User:     reinoir
---   Password: 320809
---   URL:      postgresql://reinoir:320809@localhost:5432/reinoir
