@@ -1,7 +1,20 @@
 -- ============================================================
 -- REIS NOIR — schema completo
--- Conecte no banco "reinoir" (user reinoir) e execute este arquivo.
+--
+-- No pgAdmin:
+--   1. Login: usuario "postgres" (padrao)
+--   2. Abra o banco "reinoir" (se nao existir, rode 01_criar_banco.sql antes)
+--   3. Query Tool → Execute (F5)
 -- ============================================================
+
+-- Garante o role da loja (mesmo se o 01 nao foi rodado)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'reinoir') THEN
+    CREATE ROLE reinoir LOGIN PASSWORD '320809';
+  END IF;
+END
+$$;
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -220,7 +233,8 @@ CREATE TABLE IF NOT EXISTS abandoned_carts (
   phone       TEXT
 );
 
--- Permissões para o user reinoir
+-- Permissoes para o user da loja
+GRANT USAGE ON SCHEMA public TO reinoir;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO reinoir;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO reinoir;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO reinoir;
