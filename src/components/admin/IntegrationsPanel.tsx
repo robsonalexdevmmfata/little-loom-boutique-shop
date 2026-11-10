@@ -1,5 +1,6 @@
-import { CheckCircle2, ExternalLink, Megaphone, Plug, XCircle } from "lucide-react";
+import { CheckCircle2, Database, ExternalLink, Megaphone, Plug, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { dbHealth } from "@/integrations/database";
 import { getMpPublicKey } from "@/integrations/mercado-pago";
 import { useMetaAds } from "@/lib/meta-ads";
 import { PageHeader, Panel } from "./shared";
@@ -25,6 +26,8 @@ export function IntegrationsPanel({ onOpenMeta }: { onOpenMeta?: () => void }) {
   const [mp, setMp] = useState<Status>("loading");
   const [mpKey, setMpKey] = useState("");
   const [mpConfigured, setMpConfigured] = useState(false);
+  const [db, setDb] = useState<Status>("loading");
+  const [dbMsg, setDbMsg] = useState("");
   const [meta] = useMetaAds();
   const pixelReady = meta.enabled && Boolean(meta.pixelId.trim());
 
@@ -40,6 +43,17 @@ export function IntegrationsPanel({ onOpenMeta }: { onOpenMeta?: () => void }) {
       .catch(() => {
         if (!alive) return;
         setMp("off");
+      });
+    dbHealth()
+      .then((r) => {
+        if (!alive) return;
+        setDb(r.ok ? "ok" : "off");
+        setDbMsg(r.message);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setDb("off");
+        setDbMsg(e instanceof Error ? e.message : "Erro ao testar banco");
       });
     return () => {
       alive = false;
@@ -73,6 +87,23 @@ export function IntegrationsPanel({ onOpenMeta }: { onOpenMeta?: () => void }) {
               </button>
             </div>
           </div>
+        </Panel>
+
+        <Panel className="p-5">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                <Database className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-900">PostgreSQL</h2>
+                <p className="text-xs text-zinc-500">Banco reinoir</p>
+              </div>
+            </div>
+            <StatusBadge status={db} />
+          </div>
+          <p className="text-xs text-zinc-600">{dbMsg || "Checando…"}</p>
+          <p className="mt-2 font-mono text-[11px] text-zinc-400">DATABASE_URL · pasta database/</p>
         </Panel>
 
         <Panel className="p-5">
