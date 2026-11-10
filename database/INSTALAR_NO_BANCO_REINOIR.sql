@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS products (
   id               TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   slug             TEXT NOT NULL UNIQUE,
   name             TEXT NOT NULL,
-  category         TEXT NOT NULL REFERENCES categories(name) ON UPDATE CASCADE,
+  category         TEXT NOT NULL,
   subcategory      TEXT,
   price            NUMERIC(12,2) NOT NULL CHECK (price >= 0),
   promo            NUMERIC(12,2) CHECK (promo IS NULL OR promo >= 0),

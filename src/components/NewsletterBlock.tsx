@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { dbAddNewsletter } from "@/integrations/db-api";
 import { useNewsletter } from "@/lib/cms-extras";
 
 export function NewsletterBlock() {
@@ -18,6 +19,7 @@ export function NewsletterBlock() {
       return;
     }
     setList([{ email: v, date: new Date().toISOString().slice(0, 10) }, ...list]);
+    void dbAddNewsletter({ data: { email: v } }).catch(() => undefined);
     setEmail("");
     toast.success("Inscrição confirmada");
   };

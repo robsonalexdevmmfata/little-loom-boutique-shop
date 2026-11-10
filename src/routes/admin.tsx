@@ -60,6 +60,7 @@ import { UsersPanel } from "@/components/admin/UsersPanel";
 import { Drawer, EmptyState, Field, ImageUploadField, PageHeader, Panel, ProductStatusBadge, StatusPill, area, field } from "@/components/admin/shared";
 import { Switch } from "@/components/ui/switch";
 import { exportOrdersCsv, exportProductsCsv, parseProductsCsv } from "@/lib/admin-utils";
+import { dbAdminLogin } from "@/integrations/db-api";
 import { clearAdminSession, findAdminUser, getAdminSession, logActivity, setAdminSession, useAdminUsers } from "@/lib/cms-extras";
 import { printOrderSlip } from "@/lib/print-order";
 import {
@@ -179,17 +180,32 @@ function Admin() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const user = findAdminUser(adminUsers, pw);
-            if (user) {
-              setAdminSession(user);
-              setSessionUser({ name: user.name, role: user.role });
-              setOk(true);
-              setErr(false);
-              logActivity(user.name, "Login", `Acesso como ${user.role}`);
-            } else {
-              setErr(true);
-              toast.error("Senha incorreta");
-            }
+            void (async () => {
+              try {
+                const res = await dbAdminLogin({ data: { password: pw } });
+                if (res.ok && res.user) {
+                  setAdminSession({ id: res.user.id, name: res.user.name, role: res.user.role, password: pw });
+                  setSessionUser({ name: res.user.name, role: res.user.role });
+                  setOk(true);
+                  setErr(false);
+                  logActivity(res.user.name, "Login", `Acesso como ${res.user.role}`);
+                  return;
+                }
+              } catch {
+                /* fallback local */
+              }
+              const user = findAdminUser(adminUsers, pw);
+              if (user) {
+                setAdminSession(user);
+                setSessionUser({ name: user.name, role: user.role });
+                setOk(true);
+                setErr(false);
+                logActivity(user.name, "Login", `Acesso como ${user.role}`);
+              } else {
+                setErr(true);
+                toast.error("Senha incorreta");
+              }
+            })();
           }}
           className="w-full max-w-[400px] rounded-xl border border-zinc-200 bg-white p-8 shadow-sm"
         >

@@ -1,4 +1,21 @@
 import { useEffect, useState } from "react";
+import {
+  dbGetActivity,
+  dbGetAnalytics,
+  dbGetFaq,
+  dbGetNewsletter,
+  dbGetPopup,
+  dbGetReviews,
+  dbGetSeo,
+  dbLogActivity,
+  dbSaveAnalytics,
+  dbSaveFaq,
+  dbSaveNewsletter,
+  dbSavePopup,
+  dbSaveReviews,
+  dbSaveSeo,
+} from "@/integrations/db-api";
+import { useDbSynced } from "@/lib/db-sync";
 
 function useLS<T>(key: string, seed: T) {
   const [v, setV] = useState<T>(seed);
@@ -214,16 +231,136 @@ export const seedSeo: SeoConfig = {
   defaultOgImage: "https://little-loom-boutique-shop.vercel.app/og-image.jpg",
 };
 
-export const useFaq = () => useLS("rn-faq-v1", seedFaq);
-/** v2: avatares em círculo nos depoimentos */
-export const useReviews = () => useLS("rn-reviews-v2", seedReviews);
-export const useNewsletter = () => useLS<NewsletterSub[]>("rn-newsletter-v1", []);
-export const useActivity = () => useLS<ActivityEntry[]>("rn-activity-v1", []);
+export const useFaq = () => {
+  const [v, set] = useDbSynced({
+    key: "rn-faq-v1",
+    seed: seedFaq,
+    load: async () => {
+      try {
+        const rows = await dbGetFaq();
+        return rows?.length ? rows : null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveFaq({ data: next });
+    },
+  });
+  return [v, set] as const;
+};
+
+export const useReviews = () => {
+  const [v, set] = useDbSynced({
+    key: "rn-reviews-v2",
+    seed: seedReviews,
+    load: async () => {
+      try {
+        const rows = await dbGetReviews();
+        return rows?.length ? rows : null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveReviews({ data: next });
+    },
+  });
+  return [v, set] as const;
+};
+
+export const useNewsletter = () => {
+  const [v, set] = useDbSynced({
+    key: "rn-newsletter-v1",
+    seed: [] as NewsletterSub[],
+    load: async () => {
+      try {
+        return await dbGetNewsletter();
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveNewsletter({ data: next });
+    },
+  });
+  return [v, set] as const;
+};
+
+export const useActivity = () => {
+  const [v, set] = useDbSynced({
+    key: "rn-activity-v1",
+    seed: [] as ActivityEntry[],
+    load: async () => {
+      try {
+        return await dbGetActivity();
+      } catch {
+        return null;
+      }
+    },
+    save: async () => {
+      /* activity é append-only via logActivity */
+    },
+  });
+  return [v, set] as const;
+};
+
 export const useAdminUsers = () => useLS("rn-admin-users-v1", seedAdminUsers);
-export const useAnalytics = () => useLS("rn-analytics-v1", seedAnalytics);
-/** v2: ativo por padrão + homeOnly / cupom / delay */
-export const useCampaignPopup = () => useLS("rn-popup-v2", seedPopup);
-export const useSeo = () => useLS("rn-seo-v1", seedSeo);
+
+export const useAnalytics = () => {
+  const [v, set] = useDbSynced({
+    key: "rn-analytics-v1",
+    seed: seedAnalytics,
+    load: async () => {
+      try {
+        return (await dbGetAnalytics()) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveAnalytics({ data: next });
+    },
+  });
+  return [v, set] as const;
+};
+
+export const useCampaignPopup = () => {
+  const [v, set] = useDbSynced({
+    key: "rn-popup-v2",
+    seed: seedPopup,
+    load: async () => {
+      try {
+        return (await dbGetPopup()) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSavePopup({ data: next });
+    },
+  });
+  return [v, set] as const;
+};
+
+export const useSeo = () => {
+  const [v, set] = useDbSynced({
+    key: "rn-seo-v1",
+    seed: seedSeo,
+    load: async () => {
+      try {
+        return (await dbGetSeo()) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveSeo({ data: next });
+    },
+  });
+  return [v, set] as const;
+};
+
 export const useAbandonedCarts = () => useLS<AbandonedCartSnap[]>("rn-abandoned-v1", []);
 
 export function logActivity(who: string, action: string, detail: string) {
@@ -240,6 +377,7 @@ export function logActivity(who: string, action: string, detail: string) {
     const next = [entry, ...prev].slice(0, 200);
     localStorage.setItem("rn-activity-v1", JSON.stringify(next));
     window.dispatchEvent(new Event("rn-store"));
+    void dbLogActivity({ data: { who, action, detail } }).catch(() => undefined);
   } catch {
     /* ignore */
   }

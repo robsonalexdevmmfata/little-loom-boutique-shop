@@ -1,6 +1,6 @@
 import { CheckCircle2, Database, ExternalLink, Megaphone, Plug, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { dbHealth } from "@/integrations/database";
+import { dbHealth } from "@/integrations/db-api";
 import { getMpPublicKey } from "@/integrations/mercado-pago";
 import { useMetaAds } from "@/lib/meta-ads";
 import { PageHeader, Panel } from "./shared";

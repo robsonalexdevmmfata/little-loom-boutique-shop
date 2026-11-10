@@ -1,4 +1,20 @@
 import { useEffect, useState } from "react";
+import {
+  dbGetCatalog,
+  dbGetCommerce,
+  dbGetCoupons,
+  dbGetOrders,
+  dbGetProducts,
+  dbGetSettings,
+  dbSaveCatalog,
+  dbSaveCommerce,
+  dbSaveCoupons,
+  dbSaveOrders,
+  dbSaveProducts,
+  dbSaveSettings,
+  dbSeedProductsIfEmpty,
+} from "@/integrations/db-api";
+import { useDbSynced } from "@/lib/db-sync";
 import heroImg from "@/assets/slide_principal.jpg";
 import conjuntosImg from "@/assets/cat_conjuntos.jpg";
 import vestidosImg from "@/assets/cat_vestidos.jpg";
@@ -668,13 +684,134 @@ export const seedCommerce: CommerceConfig = {
   maintenanceMessage: "Estamos em manutenção rápida. Volte em instantes.",
 };
 
-export const useProducts = () => useLS("rn-products-v5", seedProducts);
-export const useCatalog = () => useLS("rn-catalog-v1", seedCatalog);
-export const useOrders = () => useLS("rn-orders-v3", seedOrders);
-export const useSettings = () => useLS("rn-settings-v2", seedSettings);
+let productsBoot: Promise<Product[] | null> | null = null;
+
+export const useProducts = () => {
+  const [products, setProducts] = useDbSynced({
+    key: "rn-products-v5",
+    seed: seedProducts,
+    load: async () => {
+      if (!productsBoot) {
+        productsBoot = (async () => {
+          try {
+            const boot = await dbSeedProductsIfEmpty({
+              data: {
+                products: seedProducts,
+                catalog: seedCatalog,
+              },
+            });
+            if (boot.seeded) return seedProducts;
+            return (await dbGetProducts()) as Product[];
+          } catch {
+            return null;
+          }
+        })();
+      }
+      return productsBoot;
+    },
+    save: async (next) => {
+      await dbSaveProducts({ data: next });
+    },
+  });
+  return [products, setProducts] as const;
+};
+
+export const useCatalog = () => {
+  const [catalog, setCatalog] = useDbSynced({
+    key: "rn-catalog-v1",
+    seed: seedCatalog,
+    load: async () => {
+      try {
+        const rows = await dbGetCatalog();
+        return rows?.length ? (rows as CatalogCategory[]) : null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveCatalog({ data: next });
+    },
+  });
+  return [catalog, setCatalog] as const;
+};
+
+export const useOrders = () => {
+  const [orders, setOrders] = useDbSynced({
+    key: "rn-orders-v3",
+    seed: seedOrders,
+    load: async () => {
+      try {
+        return (await dbGetOrders()) as Order[];
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveOrders({ data: next });
+    },
+  });
+  return [orders, setOrders] as const;
+};
+
+export const useSettings = () => {
+  const [settings, setSettings] = useDbSynced({
+    key: "rn-settings-v2",
+    seed: seedSettings,
+    load: async () => {
+      try {
+        const data = await dbGetSettings();
+        if (!data || !Object.keys(data).length) return null;
+        return { ...seedSettings, ...(data as Partial<Settings>) };
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveSettings({ data: next as unknown as Record<string, unknown> });
+    },
+  });
+  return [settings, setSettings] as const;
+};
+
 export const useCart = () => useLS<CartItem[]>("rn-cart", []);
-export const useCoupons = () => useLS("rn-coupons-v1", seedCoupons);
-export const useCommerce = () => useLS("rn-commerce-v1", seedCommerce);
+
+export const useCoupons = () => {
+  const [coupons, setCoupons] = useDbSynced({
+    key: "rn-coupons-v1",
+    seed: seedCoupons,
+    load: async () => {
+      try {
+        const rows = await dbGetCoupons();
+        return rows?.length ? (rows as Coupon[]) : null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveCoupons({ data: next });
+    },
+  });
+  return [coupons, setCoupons] as const;
+};
+
+export const useCommerce = () => {
+  const [commerce, setCommerce] = useDbSynced({
+    key: "rn-commerce-v1",
+    seed: seedCommerce,
+    load: async () => {
+      try {
+        const row = await dbGetCommerce();
+        return row ? (row as CommerceConfig) : null;
+      } catch {
+        return null;
+      }
+    },
+    save: async (next) => {
+      await dbSaveCommerce({ data: next });
+    },
+  });
+  return [commerce, setCommerce] as const;
+};
 
 export const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export const ADMIN_PASSWORD = "1234";

@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Crown, Lock, MapPin, Package, ShieldCheck, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/StoreLayout";
+import { dbCreateOrder } from "@/integrations/db-api";
 import { clearAbandonedCart, snapshotAbandonedCart } from "@/lib/cms-extras";
 import { brl, calcCartTotals, nextOrderId, resolveCartLines, stockForSize, useCart, useOrders, useProducts, withSyncedStock } from "@/lib/store";
 import { quoteShipping, type ShippingQuote } from "@/integrations/shipping";
@@ -122,22 +123,39 @@ function Checkout() {
   };
 
   const finishLocalOrder = (status: "Pago" | "Aguardando pagamento", paymentLabel: string, mpId?: string) => {
-    setOrders([
-      {
-        id: draftOrderId,
-        customer: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        total,
-        status,
-        date: new Date().toISOString().slice(0, 10),
-        items,
-        payment: paymentLabel.includes("PIX") ? "PIX" : paymentLabel.includes("boleto") || paymentLabel.includes("ticket") ? "Boleto" : "Cartão",
-        city: `${city}/${uf}`,
-        shippingLabel: shippingId || undefined,
+    const payment = paymentLabel.includes("PIX")
+      ? ("PIX" as const)
+      : paymentLabel.includes("boleto") || paymentLabel.includes("ticket")
+        ? ("Boleto" as const)
+        : ("Cartão" as const);
+    const order = {
+      id: draftOrderId,
+      customer: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      total,
+      status,
+      date: new Date().toISOString().slice(0, 10),
+      items,
+      payment,
+      city: `${city}/${uf}`,
+      shippingLabel: shippingId || undefined,
+    };
+    const orderLines = lines.map((l) => ({
+      productId: l.productId,
+      name: l.p.name,
+      size: l.size,
+      qty: l.qty,
+      unitPrice: l.p.promo ?? l.p.price,
+    }));
+    setOrders([order, ...orders]);
+    void dbCreateOrder({
+      data: {
+        order,
+        lines: orderLines,
+        decrementStock: status === "Pago",
       },
-      ...orders,
-    ]);
+    }).catch((e) => console.error("Falha ao gravar pedido no Postgres", e));
     if (status === "Pago") {
       setProducts(
         products.map((p) => {
