@@ -1,7 +1,21 @@
 -- ============================================================
--- REIS NOIR — dados iniciais (opcional)
--- Rode no banco "reinoir" depois do 02_schema.sql
+-- REIS NOIR — dados iniciais
+--
+-- PREFERIVEL: rode INSTALAR_NO_BANCO_REINOIR.sql (schema + seed juntos)
+--
+-- Se for rodar este arquivo sozinho:
+--   Query Tool no banco "reinoir" (nao "postgres")
+--   e o 02_schema.sql ja precisa ter sido executado com sucesso.
 -- ============================================================
+
+DO $$
+BEGIN
+  IF to_regclass('public.commerce_config') IS NULL THEN
+    RAISE EXCEPTION
+      'Tabela commerce_config nao existe. Voce esta no banco errado OU o 02_schema nao rodou. Abra o banco REINOIR e execute INSTALAR_NO_BANCO_REINOIR.sql';
+  END IF;
+END
+$$;
 
 INSERT INTO commerce_config (id) VALUES (1)
 ON CONFLICT (id) DO NOTHING;
@@ -66,7 +80,6 @@ INSERT INTO faq_items (id, question, answer, sort_order) VALUES
   ('f3', 'Quais formas de pagamento?', 'PIX, cartão em até 12x e boleto via Mercado Pago.', 3)
 ON CONFLICT (id) DO NOTHING;
 
--- Senhas demo iguais ao painel atual (1234 / loja) — troque em produção
 INSERT INTO admin_users (id, name, role, password_hash) VALUES
   ('u1', 'Dono', 'dono', crypt('1234', gen_salt('bf'))),
   ('u2', 'Atendimento', 'atendente', crypt('loja', gen_salt('bf')))
